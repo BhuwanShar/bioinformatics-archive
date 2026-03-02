@@ -1,0 +1,3374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bioinformatics Knowledge Archive</title>
+    <style>
+        /* ============================================
+           CSS RESET & BASE
+           ============================================ */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --border-color: #30363d;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-purple: #bc8cff;
+            --accent-orange: #d29922;
+            --accent-red: #f85149;
+            --accent-pink: #f778ba;
+            --accent-cyan: #39d2c0;
+            --node-genomics: #58a6ff;
+            --node-transcriptomics: #3fb950;
+            --node-proteomics: #bc8cff;
+            --node-phylogenetics: #d29922;
+            --node-metagenomics: #f778ba;
+            --node-structural: #39d2c0;
+            --node-comparative: #f85149;
+            --node-functional: #ff7b72;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.6);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* ============================================
+           HEADER
+           ============================================ */
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, #1a1e2e 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 2rem 2rem 1.5rem;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple), var(--accent-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            max-width: 800px;
+            margin: 0 auto 1rem;
+        }
+
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 12px 20px 12px 48px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .search-container input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+
+        .search-container .search-icon {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* ============================================
+           NAVIGATION BREADCRUMB
+           ============================================ */
+        .breadcrumb {
+            padding: 0.75rem 2rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            flex-wrap: wrap;
+        }
+
+        .breadcrumb-item {
+            color: var(--accent-blue);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .breadcrumb-item:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb-separator {
+            color: var(--text-muted);
+        }
+
+        .breadcrumb-current {
+            color: var(--text-secondary);
+        }
+
+        /* ============================================
+           MAIN LAYOUT
+           ============================================ */
+        .main-container {
+            display: flex;
+            min-height: calc(100vh - 140px);
+        }
+
+        /* ============================================
+           SIDEBAR - TREE NAVIGATION
+           ============================================ */
+        .sidebar {
+            width: 380px;
+            min-width: 380px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 1rem 0;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .tree-section-title {
+            padding: 0.5rem 1.5rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        /* Tree Node Styles */
+        .tree-node {
+            user-select: none;
+        }
+
+        .tree-node-header {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px 8px calc(16px + var(--depth, 0) * 20px);
+            cursor: pointer;
+            transition: var(--transition);
+            border-left: 3px solid transparent;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .tree-node-header:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .tree-node-header.active {
+            background: rgba(88, 166, 255, 0.1);
+            border-left-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .tree-node-header.active .node-icon {
+            color: var(--accent-blue);
+        }
+
+        .tree-toggle {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .tree-toggle.expanded {
+            transform: rotate(90deg);
+        }
+
+        .tree-toggle.leaf {
+            visibility: hidden;
+        }
+
+        .node-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            width: 24px;
+            text-align: center;
+        }
+
+        .node-label {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .node-badge {
+            font-size: 0.65rem;
+            padding: 1px 6px;
+            border-radius: 10px;
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .tree-node-children {
+            display: none;
+        }
+
+        .tree-node-children.expanded {
+            display: block;
+        }
+
+        /* Color coding for different fields */
+        .tree-node-header[data-color="blue"] .node-icon { color: var(--node-genomics); }
+        .tree-node-header[data-color="green"] .node-icon { color: var(--node-transcriptomics); }
+        .tree-node-header[data-color="purple"] .node-icon { color: var(--node-proteomics); }
+        .tree-node-header[data-color="orange"] .node-icon { color: var(--node-phylogenetics); }
+        .tree-node-header[data-color="pink"] .node-icon { color: var(--node-metagenomics); }
+        .tree-node-header[data-color="cyan"] .node-icon { color: var(--node-structural); }
+        .tree-node-header[data-color="red"] .node-icon { color: var(--node-comparative); }
+
+        /* ============================================
+           CONTENT PANEL
+           ============================================ */
+        .content-panel {
+            flex-grow: 1;
+            padding: 2rem 3rem;
+            overflow-y: auto;
+            max-width: calc(100% - 380px);
+        }
+
+        .content-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            transition: var(--transition);
+        }
+
+        .content-card:hover {
+            border-color: rgba(88, 166, 255, 0.3);
+        }
+
+        .content-card h2 {
+            font-size: 1.6rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .content-card h3 {
+            font-size: 1.15rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .content-card h4 {
+            font-size: 1rem;
+            margin: 1.25rem 0 0.5rem;
+            color: var(--accent-purple);
+        }
+
+        .content-card p {
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            line-height: 1.8;
+        }
+
+        .content-card ul, .content-card ol {
+            color: var(--text-secondary);
+            padding-left: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .content-card li {
+            margin-bottom: 0.4rem;
+            line-height: 1.7;
+        }
+
+        .content-card li strong {
+            color: var(--text-primary);
+        }
+
+        /* Tag pills */
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .tag {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            border: 1px solid;
+        }
+
+        .tag-tool { background: rgba(88, 166, 255, 0.1); color: var(--accent-blue); border-color: rgba(88, 166, 255, 0.3); }
+        .tag-algo { background: rgba(188, 140, 255, 0.1); color: var(--accent-purple); border-color: rgba(188, 140, 255, 0.3); }
+        .tag-db { background: rgba(63, 185, 80, 0.1); color: var(--accent-green); border-color: rgba(63, 185, 80, 0.3); }
+        .tag-format { background: rgba(210, 153, 34, 0.1); color: var(--accent-orange); border-color: rgba(210, 153, 34, 0.3); }
+        .tag-question { background: rgba(248, 81, 73, 0.1); color: var(--accent-red); border-color: rgba(248, 81, 73, 0.3); }
+        .tag-lang { background: rgba(247, 120, 186, 0.1); color: var(--accent-pink); border-color: rgba(247, 120, 186, 0.3); }
+
+        /* Info boxes */
+        .info-box {
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-sm);
+            margin: 1rem 0;
+            border-left: 4px solid;
+        }
+
+        .info-box.definition {
+            background: rgba(88, 166, 255, 0.05);
+            border-color: var(--accent-blue);
+        }
+
+        .info-box.question {
+            background: rgba(63, 185, 80, 0.05);
+            border-color: var(--accent-green);
+        }
+
+        .info-box.warning {
+            background: rgba(210, 153, 34, 0.05);
+            border-color: var(--accent-orange);
+        }
+
+        .info-box.math {
+            background: rgba(188, 140, 255, 0.05);
+            border-color: var(--accent-purple);
+        }
+
+        .info-box .info-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-box.definition .info-title { color: var(--accent-blue); }
+        .info-box.question .info-title { color: var(--accent-green); }
+        .info-box.warning .info-title { color: var(--accent-orange); }
+        .info-box.math .info-title { color: var(--accent-purple); }
+
+        /* Code blocks */
+        .code-block {
+            background: #0d1117;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 1.25rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block pre {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        .code-block .code-lang {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .code-block .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 60px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 2px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: var(--transition);
+        }
+
+        .code-block .copy-btn:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        /* Pipeline flow diagram */
+        .pipeline {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .pipeline-step {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 12px 20px;
+            text-align: center;
+            min-width: 120px;
+            transition: var(--transition);
+        }
+
+        .pipeline-step:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .pipeline-step .step-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .pipeline-step .step-tool {
+            font-size: 0.75rem;
+            color: var(--accent-blue);
+            margin-top: 4px;
+        }
+
+        .pipeline-arrow {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            padding: 0 4px;
+        }
+
+        /* Comparison tables */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.88rem;
+        }
+
+        .comparison-table th {
+            background: var(--bg-tertiary);
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+            color: var(--accent-blue);
+        }
+
+        .comparison-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .comparison-table tr:hover td {
+            background: rgba(88, 166, 255, 0.03);
+        }
+
+        /* Math / Formula display */
+        .formula {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            font-style: italic;
+            text-align: center;
+            padding: 1rem;
+            font-size: 1.1rem;
+            color: var(--accent-purple);
+        }
+
+        /* Interpretation guide boxes */
+        .interpretation {
+            background: rgba(57, 210, 192, 0.05);
+            border: 1px solid rgba(57, 210, 192, 0.2);
+            border-radius: var(--radius-sm);
+            padding: 1.25rem;
+            margin: 1rem 0;
+        }
+
+        .interpretation h4 {
+            color: var(--accent-cyan) !important;
+            margin-top: 0 !important;
+        }
+
+        /* Landing page grid */
+        .landing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.25rem;
+            margin: 1.5rem 0;
+        }
+
+        .landing-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .landing-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .landing-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow);
+            border-color: rgba(88, 166, 255, 0.3);
+        }
+
+        .landing-card .card-icon {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .landing-card .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .landing-card .card-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .landing-card .card-count {
+            margin-top: 0.75rem;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        /* Color-specific cards */
+        .landing-card.genomics::before { background: var(--node-genomics); }
+        .landing-card.transcriptomics::before { background: var(--node-transcriptomics); }
+        .landing-card.proteomics::before { background: var(--node-proteomics); }
+        .landing-card.phylogenetics::before { background: var(--node-phylogenetics); }
+        .landing-card.metagenomics::before { background: var(--node-metagenomics); }
+        .landing-card.structural::before { background: var(--node-structural); }
+        .landing-card.comparative::before { background: var(--node-comparative); }
+        .landing-card.functional::before { background: var(--node-functional); }
+
+        /* Decision tree visual */
+        .decision-flow {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .decision-node {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: var(--radius-sm);
+            margin: 0.5rem;
+            font-size: 0.88rem;
+            font-weight: 500;
+        }
+
+        .decision-node.question-node {
+            background: rgba(210, 153, 34, 0.15);
+            border: 1px solid rgba(210, 153, 34, 0.4);
+            color: var(--accent-orange);
+        }
+
+        .decision-node.answer-node {
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+            color: var(--accent-blue);
+            cursor: pointer;
+        }
+
+        .decision-node.answer-node:hover {
+            background: rgba(88, 166, 255, 0.2);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: unset;
+                max-height: 40vh;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .content-panel {
+                max-width: 100%;
+                padding: 1.5rem;
+            }
+            .landing-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Scrollbar for content */
+        .content-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .content-panel::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        /* Utility classes */
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+        .mt-3 { margin-top: 1.5rem; }
+        .mb-1 { margin-bottom: 0.5rem; }
+        .mb-2 { margin-bottom: 1rem; }
+        .text-muted { color: var(--text-muted); }
+        .text-blue { color: var(--accent-blue); }
+        .text-green { color: var(--accent-green); }
+        .text-purple { color: var(--accent-purple); }
+        .text-orange { color: var(--accent-orange); }
+        .text-bold { font-weight: 600; }
+
+        /* Highlight for search */
+        .highlight {
+            background: rgba(210, 153, 34, 0.3);
+            border-radius: 2px;
+            padding: 0 2px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============================================
+     HEADER
+     ============================================ -->
+<div class="header">
+    <h1>🧬 Bioinformatics Knowledge Archive</h1>
+    <p>A comprehensive, interactive decision tree for bioinformatics analysis — from raw data to biological insight. Click any node to explore tools, algorithms, workflows, and interpretation guides.</p>
+    <div class="search-container">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search tools, methods, concepts... (e.g., DESeq2, phylogeny, 16S)" autocomplete="off">
+    </div>
+</div>
+
+<!-- ============================================
+     BREADCRUMB
+     ============================================ -->
+<div class="breadcrumb" id="breadcrumb">
+    <span class="breadcrumb-current">🏠 Home</span>
+</div>
+
+<!-- ============================================
+     MAIN LAYOUT
+     ============================================ -->
+<div class="main-container">
+
+    <!-- SIDEBAR TREE -->
+    <div class="sidebar" id="sidebar">
+        <div class="tree-section-title">Knowledge Tree</div>
+        <div id="treeContainer"></div>
+    </div>
+
+    <!-- CONTENT PANEL -->
+    <div class="content-panel" id="contentPanel">
+        <!-- Content will be dynamically inserted here -->
+    </div>
+
+</div>
+
+<script>
+// ============================================================
+// COMPLETE BIOINFORMATICS KNOWLEDGE DATA
+// ============================================================
+
+const KNOWLEDGE_BASE = {
+    id: "root",
+    label: "Bioinformatics",
+    icon: "🧬",
+    color: "blue",
+    content: {
+        title: "🧬 Bioinformatics — The Complete Archive",
+        type: "landing",
+        sections: [
+            {
+                type: "definition",
+                title: "What is Bioinformatics?",
+                text: "Bioinformatics is an interdisciplinary field that combines biology, computer science, mathematics, and statistics to analyze and interpret biological data. It involves the development and application of computational tools and methods to understand biological phenomena, particularly at the molecular level."
+            },
+            {
+                type: "paragraph",
+                text: "Select a domain from the tree on the left or click a card below to explore the full landscape of bioinformatics — including the biological questions each field answers, the tools and algorithms used, mathematical foundations, data formats, and step-by-step reproducible workflows."
+            }
+        ]
+    },
+    children: [
+        // ====================================================
+        // 1. GENOMICS
+        // ====================================================
+        {
+            id: "genomics",
+            label: "Genomics",
+            icon: "🧬",
+            color: "blue",
+            content: {
+                title: "🧬 Genomics",
+                sections: [
+                    {
+                        type: "definition",
+                        title: "What is Genomics?",
+                        text: "Genomics is the study of the complete set of DNA (the genome) of an organism. It encompasses the sequencing, assembly, annotation, and analysis of genomes to understand gene structure, function, evolution, and regulation."
+                    },
+                    {
+                        type: "questions",
+                        title: "Biological Questions Answered",
+                        items: [
+                            "What genes does an organism have and where are they located?",
+                            "How does the genome vary between individuals (SNPs, indels, CNVs, SVs)?",
+                            "What are the regulatory elements controlling gene expression?",
+                            "How do genomes evolve over time?",
+                            "What genetic variants are associated with diseases or traits?",
+                            "What is the ploidy and genome size of an organism?",
+                            "How are genomes organized (synteny, repeats, transposable elements)?"
+                        ]
+                    },
+                    {
+                        type: "tags",
+                        items: [
+                            { label: "BWA", class: "tag-tool" },
+                            { label: "Bowtie2", class: "tag-tool" },
+                            { label: "GATK", class: "tag-tool" },
+                            { label: "bcftools", class: "tag-tool" },
+                            { label: "SPAdes", class: "tag-tool" },
+                            { label: "MEGAHIT", class: "tag-tool" },
+                            { label: "Prokka", class: "tag-tool" },
+                            { label: "BLAST", class: "tag-tool" },
+                            { label: "Smith-Waterman", class: "tag-algo" },
+                            { label: "Needleman-Wunsch", class: "tag-algo" },
+                            { label: "BWT/FM-index", class: "tag-algo" },
+                            { label: "de Bruijn Graph", class: "tag-algo" },
+                            { label: "HMM", class: "tag-algo" },
+                            { label: "FASTA", class: "tag-format" },
+                            { label: "FASTQ", class: "tag-format" },
+                            { label: "BAM/SAM", class: "tag-format" },
+                            { label: "VCF", class: "tag-format" },
+                            { label: "GFF/GTF", class: "tag-format" },
+                            { label: "BED", class: "tag-format" },
+                            { label: "NCBI", class: "tag-db" },
+                            { label: "Ensembl", class: "tag-db" },
+                            { label: "UCSC", class: "tag-db" },
+                            { label: "Bash", class: "tag-lang" },
+                            { label: "Python", class: "tag-lang" },
+                            { label: "R", class: "tag-lang" }
+                        ]
+                    }
+                ]
+            },
+            children: [
+                // 1.1 Genome Sequencing & QC
+                {
+                    id: "genome-sequencing-qc",
+                    label: "Sequencing & Quality Control",
+                    icon: "🔬",
+                    color: "blue",
+                    content: {
+                        title: "🔬 Sequencing & Quality Control",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "Overview",
+                                text: "The first step in any genomics pipeline. Raw sequencing reads (FASTQ) must be assessed for quality and preprocessed to remove adapters, low-quality bases, and contaminants before downstream analysis."
+                            },
+                            {
+                                type: "pipeline",
+                                steps: [
+                                    { name: "Raw Reads", tool: "FASTQ" },
+                                    { name: "QC Report", tool: "FastQC" },
+                                    { name: "Trim/Filter", tool: "Trimmomatic / fastp" },
+                                    { name: "QC Report 2", tool: "FastQC / MultiQC" },
+                                    { name: "Clean Reads", tool: "FASTQ" }
+                                ]
+                            },
+                            {
+                                type: "questions",
+                                title: "Key Questions",
+                                items: [
+                                    "What is the per-base quality of my reads?",
+                                    "Are there adapter sequences contaminating my reads?",
+                                    "Is there GC content bias or sequence duplication?",
+                                    "What is the read length distribution?",
+                                    "Are there overrepresented sequences (contamination)?"
+                                ]
+                            },
+                            {
+                                type: "tools-table",
+                                title: "Tools Comparison",
+                                headers: ["Tool", "Purpose", "Speed", "Notes"],
+                                rows: [
+                                    ["FastQC", "Quality report generation", "Fast", "Visual HTML report; does NOT trim"],
+                                    ["MultiQC", "Aggregate multiple QC reports", "Fast", "Combines FastQC + other tool outputs"],
+                                    ["Trimmomatic", "Adapter removal, quality trimming", "Moderate", "Java-based; widely used in RNA-seq"],
+                                    ["fastp", "All-in-one QC + trimming", "Very Fast", "C++ based; auto-detects adapters; recommended"],
+                                    ["Cutadapt", "Adapter removal", "Moderate", "Python-based; very flexible"],
+                                    ["BBTools (BBDuk)", "Trim, filter, decontaminate", "Fast", "Part of BBTools suite; very versatile"]
+                                ]
+                            },
+                            {
+                                type: "code",
+                                lang: "bash",
+                                title: "Complete QC Workflow",
+                                code: `# ============================================
+# STEP 1: Setup environment
+# ============================================
+# Install tools via conda (recommended)
+conda create -n qc_env -c bioconda fastqc multiqc trimmomatic fastp -y
+conda activate qc_env
+
+# Create project directory structure
+mkdir -p genomics_project/{raw_data,qc_reports,trimmed_data,logs}
+cd genomics_project
+
+# ============================================
+# STEP 2: Download example data (E. coli)
+# ============================================
+# Using SRA Toolkit to download paired-end Illumina reads
+# Install sra-tools if not available:
+# conda install -c bioconda sra-tools
+
+# Download E. coli K-12 whole genome sequencing data
+prefetch SRR1770413
+fastq-dump --split-files --outdir raw_data/ SRR1770413
+
+# Verify files
+ls -lh raw_data/
+# Should see: SRR1770413_1.fastq  SRR1770413_2.fastq
+
+# ============================================
+# STEP 3: Initial Quality Assessment
+# ============================================
+# Run FastQC on raw reads
+fastqc raw_data/*.fastq \\
+    --outdir qc_reports/ \\
+    --threads 4
+
+# Check what was generated
+ls qc_reports/
+# *.html files - open in browser to inspect
+
+# Key things to look for in FastQC report:
+# - Per base sequence quality: should be >28 (green zone)
+# - Per sequence quality scores: peak should be >30
+# - Adapter content: should be minimal/none
+# - Sequence duplication: depends on experiment type
+# - GC content: should match expected for organism
+
+# ============================================
+# STEP 4: Trimming with Trimmomatic
+# ============================================
+trimmomatic PE -threads 4 -phred33 \\
+    raw_data/SRR1770413_1.fastq \\
+    raw_data/SRR1770413_2.fastq \\
+    trimmed_data/SRR1770413_1_paired.fastq \\
+    trimmed_data/SRR1770413_1_unpaired.fastq \\
+    trimmed_data/SRR1770413_2_paired.fastq \\
+    trimmed_data/SRR1770413_2_unpaired.fastq \\
+    ILLUMINACLIP:TruSeq3-PE.fa:2:30:10:2:True \\
+    LEADING:3 \\
+    TRAILING:3 \\
+    SLIDINGWINDOW:4:20 \\
+    MINLEN:36 \\
+    2>&1 | tee logs/trimmomatic.log
+
+# PARAMETER EXPLANATION:
+# PE                          = Paired-end mode
+# -phred33                    = Quality encoding (Illumina 1.8+)
+# ILLUMINACLIP:file:2:30:10   = Adapter file : seed_mismatches : 
+#                                palindrome_clip_threshold : simple_clip_threshold
+# LEADING:3                   = Cut bases from start if quality < 3
+# TRAILING:3                  = Cut bases from end if quality < 3
+# SLIDINGWINDOW:4:20          = Scan with 4-base window, cut when avg quality < 20
+# MINLEN:36                   = Drop reads shorter than 36 bp
+
+# ============================================
+# STEP 4-ALT: Trimming with fastp (RECOMMENDED)
+# ============================================
+fastp \\
+    --in1 raw_data/SRR1770413_1.fastq \\
+    --in2 raw_data/SRR1770413_2.fastq \\
+    --out1 trimmed_data/SRR1770413_1_clean.fastq \\
+    --out2 trimmed_data/SRR1770413_2_clean.fastq \\
+    --unpaired1 trimmed_data/SRR1770413_unpaired1.fastq \\
+    --unpaired2 trimmed_data/SRR1770413_unpaired2.fastq \\
+    --html qc_reports/fastp_report.html \\
+    --json qc_reports/fastp_report.json \\
+    --thread 4 \\
+    --qualified_quality_phred 20 \\
+    --length_required 36 \\
+    --detect_adapter_for_pe \\
+    --cut_front \\
+    --cut_tail \\
+    --cut_window_size 4 \\
+    --cut_mean_quality 20
+
+# ============================================
+# STEP 5: Post-trim Quality Assessment
+# ============================================
+fastqc trimmed_data/*_paired.fastq \\
+    --outdir qc_reports/ \\
+    --threads 4
+
+# ============================================
+# STEP 6: Aggregate all reports with MultiQC
+# ============================================
+multiqc qc_reports/ -o qc_reports/multiqc_output/
+
+# Open multiqc_output/multiqc_report.html in browser
+# This gives a unified view of before/after trimming
+
+echo "✅ QC Pipeline Complete!"
+echo "Check qc_reports/multiqc_output/multiqc_report.html"`
+                            },
+                            {
+                                type: "interpretation",
+                                title: "How to Interpret QC Results",
+                                items: [
+                                    "**Per Base Sequence Quality**: Green zone (>28) is good. If bases at the 3' end dip into yellow/red, trimming was necessary.",
+                                    "**Adapter Content**: After trimming, adapter content should be 0% across all positions.",
+                                    "**Sequence Duplication Levels**: For WGS, duplication should be low. For RNA-seq/amplicon, higher duplication is expected.",
+                                    "**GC Content**: Should follow a normal distribution. A secondary peak suggests contamination.",
+                                    "**Overrepresented Sequences**: BLAST any flagged sequences to check for contamination (PhiX, adapters, rRNA).",
+                                    "**Read Survival Rate**: After trimming, >85% of reads should survive. If much lower, sequencing quality was poor."
+                                ]
+                            }
+                        ]
+                    },
+                    children: []
+                },
+
+                // 1.2 Genome Assembly
+                {
+                    id: "genome-assembly",
+                    label: "Genome Assembly",
+                    icon: "🧩",
+                    color: "blue",
+                    content: {
+                        title: "🧩 Genome Assembly",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "What is Genome Assembly?",
+                                text: "Genome assembly is the process of reconstructing the complete genome sequence from short (or long) sequencing reads. It's like solving a massive jigsaw puzzle where pieces overlap. Two main approaches exist: de novo assembly (no reference) and reference-guided assembly."
+                            },
+                            {
+                                type: "questions",
+                                title: "Biological Questions",
+                                items: [
+                                    "What is the complete genome sequence of this organism?",
+                                    "How many contigs/scaffolds make up the assembly?",
+                                    "What is the genome size and GC content?",
+                                    "How complete is the assembly (gene completeness)?",
+                                    "Are there structural variations compared to a reference?"
+                                ]
+                            },
+                            {
+                                type: "math",
+                                title: "Key Metrics",
+                                formulas: [
+                                    { name: "N50", desc: "The length of the shortest contig such that 50% of the total assembly length is covered by contigs of this length or longer. Higher N50 = better contiguity.", formula: "Sort contigs by length (desc). Walk through until cumulative length ≥ 50% of total. That contig's length = N50." },
+                                    { name: "L50", desc: "The number of contigs needed to cover 50% of the assembly. Lower L50 = better." },
+                                    { name: "Coverage", desc: "Average number of reads covering each base position.", formula: "Coverage = (Number of reads × Read length) / Genome size" },
+                                    { name: "BUSCO Score", desc: "Benchmarking Universal Single-Copy Orthologs — measures gene-level completeness. Target: >95% complete." }
+                                ]
+                            },
+                            {
+                                type: "tools-table",
+                                title: "Assembly Tools",
+                                headers: ["Tool", "Type", "Best For", "Algorithm"],
+                                rows: [
+                                    ["SPAdes", "De novo", "Bacterial/small genomes, Illumina", "de Bruijn graph + multiple k-mer"],
+                                    ["MEGAHIT", "De novo", "Metagenomes, large datasets", "Succinct de Bruijn graph"],
+                                    ["Velvet", "De novo", "Small genomes (legacy)", "de Bruijn graph"],
+                                    ["Flye", "De novo", "Long reads (PacBio/ONT)", "Repeat graph"],
+                                    ["Canu", "De novo", "Long reads, high accuracy", "OLC (Overlap-Layout-Consensus)"],
+                                    ["Hifiasm", "De novo", "PacBio HiFi reads", "String graph"],
+                                    ["QUAST", "Evaluation", "Assembly quality assessment", "Statistical comparison"],
+                                    ["BUSCO", "Evaluation", "Gene completeness", "HMM search against orthologs"]
+                                ]
+                            },
+                            {
+                                type: "pipeline",
+                                steps: [
+                                    { name: "Clean Reads", tool: "FASTQ" },
+                                    { name: "Assembly", tool: "SPAdes / Flye" },
+                                    { name: "Polishing", tool: "Pilon / Medaka" },
+                                    { name: "Scaffolding", tool: "RagTag" },
+                                    { name: "Evaluation", tool: "QUAST + BUSCO" },
+                                    { name: "Annotation", tool: "Prokka / AUGUSTUS" }
+                                ]
+                            },
+                            {
+                                type: "code",
+                                lang: "bash",
+                                title: "De Novo Assembly Workflow (Bacterial Genome)",
+                                code: `# ============================================
+# BACTERIAL GENOME ASSEMBLY PIPELINE
+# ============================================
+conda create -n assembly_env -c bioconda spades quast busco prokka -y
+conda activate assembly_env
+
+mkdir -p assembly_project/{trimmed_reads,assembly,evaluation,annotation}
+cd assembly_project
+
+# ============================================
+# STEP 1: De Novo Assembly with SPAdes
+# ============================================
+# SPAdes automatically tries multiple k-mer sizes
+spades.py \\
+    -1 trimmed_reads/sample_1_paired.fastq \\
+    -2 trimmed_reads/sample_2_paired.fastq \\
+    --careful \\
+    --cov-cutoff auto \\
+    -o assembly/spades_output \\
+    -t 8 \\
+    -m 16
+
+# Key output files:
+# assembly/spades_output/contigs.fasta    - assembled contigs
+# assembly/spades_output/scaffolds.fasta  - scaffolded contigs
+# assembly/spades_output/spades.log       - assembly log
+
+# ============================================
+# STEP 2: Assembly Quality Assessment
+# ============================================
+# QUAST for basic statistics
+quast assembly/spades_output/scaffolds.fasta \\
+    -o evaluation/quast_output \\
+    --min-contig 500 \\
+    -t 8
+
+# Check N50, L50, total length, # contigs
+cat evaluation/quast_output/report.txt
+
+# BUSCO for gene completeness
+busco \\
+    -i assembly/spades_output/scaffolds.fasta \\
+    -o evaluation/busco_output \\
+    -l bacteria_odb10 \\
+    -m genome \\
+    -c 8
+
+# ============================================
+# STEP 3: Genome Annotation with Prokka
+# ============================================
+prokka \\
+    assembly/spades_output/scaffolds.fasta \\
+    --outdir annotation/prokka_output \\
+    --prefix my_genome \\
+    --kingdom Bacteria \\
+    --cpus 8 \\
+    --mincontiglen 200
+
+# Output files:
+# .gff  - annotation in GFF3 format
+# .gbk  - GenBank format
+# .faa  - protein sequences
+# .ffn  - nucleotide sequences of genes
+# .tsv  - tab-separated feature table
+
+echo "✅ Assembly + Annotation Complete!"`
+                            },
+                            {
+                                type: "interpretation",
+                                title: "How to Interpret Assembly Results",
+                                items: [
+                                    "**N50 > 100kb** for bacterial genomes is excellent. For Illumina-only, N50 of 50-200kb is typical.",
+                                    "**Number of contigs**: Fewer = better. A bacterial genome in <50 contigs is good; <10 is excellent.",
+                                    "**Total assembly length** should be close to expected genome size (e.g., E. coli ~4.6 Mb).",
+                                    "**BUSCO completeness >95%** means the assembly captures nearly all expected genes.",
+                                    "**Coverage**: 50-100x is optimal for most assemblers. Too low = gaps; too high = can cause issues with repeat resolution."
+                                ]
+                            }
+                        ]
+                    },
+                    children: []
+                },
+
+                // 1.3 Read Alignment / Mapping
+                {
+                    id: "read-alignment",
+                    label: "Read Alignment / Mapping",
+                    icon: "🎯",
+                    color: "blue",
+                    content: {
+                        title: "🎯 Read Alignment / Mapping",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "What is Read Alignment?",
+                                text: "Read alignment (mapping) is the process of determining where each sequencing read originated in a reference genome. This is fundamental to variant calling, expression quantification, ChIP-seq peak calling, and more."
+                            },
+                            {
+                                type: "math",
+                                title: "Core Algorithms",
+                                formulas: [
+                                    { name: "Burrows-Wheeler Transform (BWT)", desc: "A reversible text transformation that groups similar characters together, enabling efficient pattern matching. Used by BWA and Bowtie2.", formula: "BWT enables O(n) pattern matching via FM-index, where n = pattern length" },
+                                    { name: "Smith-Waterman", desc: "Local alignment algorithm using dynamic programming. Guarantees optimal local alignment.", formula: "H(i,j) = max(0, H(i-1,j-1) + s(aᵢ,bⱼ), H(i-1,j) - d, H(i,j-1) - d)" },
+                                    { name: "MAPQ Score", desc: "Mapping quality — probability that the alignment position is wrong.", formula: "MAPQ = -10 × log₁₀(P(mapping position is wrong)). MAPQ 30 = 1 in 1000 chance of error." }
+                                ]
+                            },
+                            {
+                                type: "tools-table",
+                                title: "Alignment Tools",
+                                headers: ["Tool", "Best For", "Algorithm", "Speed"],
+                                rows: [
+                                    ["BWA-MEM2", "WGS, DNA-seq", "BWT + SW", "Very Fast"],
+                                    ["Bowtie2", "DNA-seq, ChIP-seq", "BWT + FM-index", "Fast"],
+                                    ["HISAT2", "RNA-seq (splice-aware)", "HGFM (hierarchical)", "Fast"],
+                                    ["STAR", "RNA-seq (splice-aware)", "Suffix array + sequential max mappable seed search", "Very Fast (high RAM)"],
+                                    ["Minimap2", "Long reads (ONT/PacBio)", "Minimizer-based", "Very Fast"]
+                                ]
+                            },
+                            {
+                                type: "pipeline",
+                                steps: [
+                                    { name: "Reference", tool: "FASTA" },
+                                    { name: "Index", tool: "bwa index / hisat2-build" },
+                                    { name: "Align", tool: "BWA-MEM2 / HISAT2" },
+                                    { name: "SAM→BAM", tool: "samtools view" },
+                                    { name: "Sort", tool: "samtools sort" },
+                                    { name: "Index BAM", tool: "samtools index" },
+                                    { name: "Stats", tool: "samtools flagstat" }
+                                ]
+                            },
+                            {
+                                type: "code",
+                                lang: "bash",
+                                title: "Complete Alignment Workflow (DNA-seq with BWA)",
+                                code: `# ============================================
+# DNA-seq ALIGNMENT PIPELINE
+# ============================================
+conda create -n align_env -c bioconda bwa-mem2 samtools -y
+conda activate align_env
+
+mkdir -p alignment_project/{reference,trimmed_reads,aligned,stats}
+cd alignment_project
+
+# ============================================
+# STEP 1: Download and prepare reference genome
+# ============================================
+# Example: E. coli K-12 MG1655 reference
+wget -P reference/ https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna.gz
+gunzip reference/*.fna.gz
+mv reference/*.fna reference/ecoli_k12.fasta
+
+# ============================================
+# STEP 2: Index the reference genome
+# ============================================
+# BWA indexing (creates .amb, .ann, .bwt, .pac, .sa files)
+bwa-mem2 index reference/ecoli_k12.fasta
+
+# This only needs to be done ONCE per reference genome
+# Time: seconds for bacteria, ~1 hour for human genome
+
+# ============================================
+# STEP 3: Align reads to reference
+# ============================================
+bwa-mem2 mem \\
+    -t 8 \\
+    -R "@RG\\tID:sample1\\tSM:sample1\\tPL:ILLUMINA\\tLB:lib1" \\
+    reference/ecoli_k12.fasta \\
+    trimmed_reads/sample_1_paired.fastq \\
+    trimmed_reads/sample_2_paired.fastq \\
+    | samtools view -bS -q 20 - \\
+    | samtools sort -@ 4 -o aligned/sample1_sorted.bam -
+
+# EXPLANATION:
+# -t 8                = use 8 threads
+# -R "@RG\\t..."       = add read group info (REQUIRED for GATK)
+# samtools view -bS   = convert SAM to BAM
+# -q 20               = keep only reads with MAPQ >= 20
+# samtools sort        = sort by coordinate
+
+# ============================================
+# STEP 4: Index the BAM file
+# ============================================
+samtools index aligned/sample1_sorted.bam
+
+# ============================================
+# STEP 5: Alignment Statistics
+# ============================================
+# Basic stats
+samtools flagstat aligned/sample1_sorted.bam > stats/flagstat.txt
+cat stats/flagstat.txt
+
+# Detailed stats
+samtools stats aligned/sample1_sorted.bam > stats/detailed_stats.txt
+
+# Coverage depth
+samtools depth -a aligned/sample1_sorted.bam | \\
+    awk '{sum+=$3; count++} END {print "Average coverage:", sum/count"x"}' > stats/coverage.txt
+
+# Per-base coverage for plotting
+samtools depth -a aligned/sample1_sorted.bam > stats/depth_per_base.txt
+
+echo "✅ Alignment Complete!"`
+                            },
+                            {
+                                type: "interpretation",
+                                title: "How to Interpret Alignment Results",
+                                items: [
+                                    "**Mapping rate >95%** is expected for WGS with matching reference. <80% suggests contamination or wrong reference.",
+                                    "**Properly paired reads >90%** indicates good library preparation.",
+                                    "**MAPQ distribution**: Most reads should have MAPQ ≥ 30. Many MAPQ 0 reads = multi-mapping (repeats).",
+                                    "**Average coverage**: 30-50x for variant calling; 10-20x for structural variant detection; 50-100x for de novo assembly.",
+                                    "**Duplicate rate <20%** is normal. Higher suggests PCR over-amplification (mark duplicates with Picard)."
+                                ]
+                            }
+                        ]
+                    },
+                    children: []
+                },
+
+                // 1.4 Variant Calling
+                {
+                    id: "variant-calling",
+                    label: "Variant Calling",
+                    icon: "🔀",
+                    color: "blue",
+                    content: {
+                        title: "🔀 Variant Calling",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "What is Variant Calling?",
+                                text: "Variant calling identifies positions in the genome where the sequenced sample differs from the reference genome. Variants include SNPs (single nucleotide polymorphisms), indels (insertions/deletions), and structural variants (large rearrangements, CNVs)."
+                            },
+                            {
+                                type: "questions",
+                                title: "Biological Questions",
+                                items: [
+                                    "What mutations differentiate this sample from the reference?",
+                                    "Which variants are associated with disease/phenotype?",
+                                    "What is the allele frequency of each variant?",
+                                    "Are variants homozygous or heterozygous?",
+                                    "What is the functional impact of each variant (synonymous, missense, nonsense)?",
+                                    "Are there structural variants (deletions, duplications, inversions, translocations)?"
+                                ]
+                            },
+                            {
+                                type: "pipeline",
+                                steps: [
+                                    { name: "Sorted BAM", tool: "from alignment" },
+                                    { name: "Mark Duplicates", tool: "Picard / samtools" },
+                                    { name: "Base Recalibration", tool: "GATK BQSR" },
+                                    { name: "Call Variants", tool: "GATK HaplotypeCaller" },
+                                    { name: "Filter Variants", tool: "GATK VQSR / hard filters" },
+                                    { name: "Annotate", tool: "SnpEff / ANNOVAR / VEP" },
+                                    { name: "VCF", tool: "Final variants" }
+                                ]
+                            },
+                            {
+                                type: "code",
+                                lang: "bash",
+                                title: "GATK Variant Calling Pipeline",
+                                code: `# ============================================
+# VARIANT CALLING WITH GATK 4
+# ============================================
+conda create -n variant_env -c bioconda gatk4 picard samtools bcftools snpeff -y
+conda activate variant_env
+
+mkdir -p variant_project/{bam,vcf,annotation,stats}
+
+# ============================================
+# STEP 1: Mark Duplicate Reads
+# ============================================
+# Duplicates = PCR artifacts that can bias variant calls
+gatk MarkDuplicates \\
+    -I aligned/sample1_sorted.bam \\
+    -O variant_project/bam/sample1_markdup.bam \\
+    -M variant_project/stats/dup_metrics.txt \\
+    --REMOVE_DUPLICATES false \\
+    --CREATE_INDEX true
+
+# ============================================
+# STEP 2: Create sequence dictionary for reference
+# ============================================
+gatk CreateSequenceDictionary -R reference/ecoli_k12.fasta
+samtools faidx reference/ecoli_k12.fasta
+
+# ============================================
+# STEP 3: Call Variants with HaplotypeCaller
+# ============================================
+gatk HaplotypeCaller \\
+    -R reference/ecoli_k12.fasta \\
+    -I variant_project/bam/sample1_markdup.bam \\
+    -O variant_project/vcf/sample1_raw.g.vcf \\
+    -ERC GVCF \\
+    --min-base-quality-score 20
+
+# For single sample (non-GVCF mode):
+gatk HaplotypeCaller \\
+    -R reference/ecoli_k12.fasta \\
+    -I variant_project/bam/sample1_markdup.bam \\
+    -O variant_project/vcf/sample1_raw.vcf
+
+# ============================================
+# STEP 4: Filter Variants (Hard Filtering)
+# ============================================
+# Extract SNPs
+gatk SelectVariants \\
+    -R reference/ecoli_k12.fasta \\
+    -V variant_project/vcf/sample1_raw.vcf \\
+    --select-type-to-include SNP \\
+    -O variant_project/vcf/sample1_snps.vcf
+
+# Filter SNPs
+gatk VariantFiltration \\
+    -R reference/ecoli_k12.fasta \\
+    -V variant_project/vcf/sample1_snps.vcf \\
+    -O variant_project/vcf/sample1_snps_filtered.vcf \\
+    --filter-expression "QD < 2.0" --filter-name "LowQD" \\
+    --filter-expression "FS > 60.0" --filter-name "StrandBias" \\
+    --filter-expression "MQ < 40.0" --filter-name "LowMQ" \\
+    --filter-expression "MQRankSum < -12.5" --filter-name "MQRankSum" \\
+    --filter-expression "ReadPosRankSum < -8.0" --filter-name "ReadPosRankSum"
+
+# Keep only PASS variants
+bcftools view -f PASS variant_project/vcf/sample1_snps_filtered.vcf \\
+    > variant_project/vcf/sample1_snps_pass.vcf
+
+# ============================================
+# STEP 5: Variant Statistics
+# ============================================
+bcftools stats variant_project/vcf/sample1_snps_pass.vcf \\
+    > variant_project/stats/variant_stats.txt
+
+# Quick counts
+echo "Total SNPs: $(grep -c -v '^#' variant_project/vcf/sample1_snps_pass.vcf)"
+
+# ============================================
+# STEP 6: Variant Annotation with SnpEff
+# ============================================
+# List available databases
+snpEff databases | grep -i "escherichia"
+
+# Annotate
+snpEff ann \\
+    Escherichia_coli_str_k_12_substr_mg1655 \\
+    variant_project/vcf/sample1_snps_pass.vcf \\
+    > variant_project/annotation/sample1_annotated.vcf
+
+# SnpEff also generates:
+# snpEff_summary.html - visual summary
+# snpEff_genes.txt    - per-gene variant counts
+
+echo "✅ Variant Calling Complete!"`
+                            },
+                            {
+                                type: "interpretation",
+                                title: "How to Interpret Variant Results",
+                                items: [
+                                    "**QUAL score**: Phred-scaled probability that a variant exists. QUAL 30 = 99.9% confident. Keep QUAL > 30.",
+                                    "**QD (QualByDepth)**: QUAL / depth. Normalizes for coverage. Filter if QD < 2.0.",
+                                    "**FS (FisherStrand)**: Strand bias. High FS = reads supporting variant come from one strand only. Filter if FS > 60.",
+                                    "**MQ (MappingQuality)**: Average MAPQ of reads. Filter if MQ < 40.",
+                                    "**Ts/Tv ratio**: Transition/Transversion ratio. Expected ~2.0-2.1 for WGS, ~2.8-3.3 for exomes. Lower = possible false positives.",
+                                    "**SnpEff Impact**: HIGH (stop gained, frameshift) > MODERATE (missense) > LOW (synonymous) > MODIFIER (intergenic)."
+                                ]
+                            }
+                        ]
+                    },
+                    children: []
+                }
+            ]
+        },
+
+        // ====================================================
+        // 2. TRANSCRIPTOMICS / RNA-seq
+        // ====================================================
+        {
+            id: "transcriptomics",
+            label: "Transcriptomics / RNA-seq",
+            icon: "📊",
+            color: "green",
+            content: {
+                title: "📊 Transcriptomics / RNA-seq",
+                sections: [
+                    {
+                        type: "definition",
+                        title: "What is Transcriptomics?",
+                        text: "Transcriptomics is the study of the complete set of RNA transcripts (the transcriptome) produced by the genome at a specific time, condition, or tissue. RNA-seq is the primary technology used for transcriptome profiling, enabling quantification of gene expression, discovery of novel transcripts, alternative splicing, and allele-specific expression."
+                    },
+                    {
+                        type: "questions",
+                        title: "Biological Questions Answered",
+                        items: [
+                            "Which genes are differentially expressed between conditions?",
+                            "What is the expression level of each gene/transcript?",
+                            "Are there novel transcripts or isoforms?",
+                            "What biological pathways are affected?",
+                            "What are the co-expression networks?",
+                            "Is there allele-specific expression?",
+                            "What splicing events differ between conditions?"
+                        ]
+                    },
+                    {
+                        type: "pipeline",
+                        steps: [
+                            { name: "Raw Reads", tool: "FASTQ" },
+                            { name: "QC + Trim", tool: "fastp" },
+                            { name: "Align", tool: "HISAT2 / STAR" },
+                            { name: "Quantify", tool: "featureCounts / HTSeq" },
+                            { name: "Normalize", tool: "DESeq2 / TMM" },
+                            { name: "DE Analysis", tool: "DESeq2 / limma / edgeR" },
+                            { name: "Enrichment", tool: "clusterProfiler" },
+                            { name: "Visualization", tool: "ggplot2 / EnhancedVolcano" }
+                        ]
+                    }
+                ]
+            },
+            children: [
+                // 2.1 RNA-seq Alignment
+                {
+                    id: "rnaseq-alignment",
+                    label: "RNA-seq Alignment",
+                    icon: "🎯",
+                    color: "green",
+                    content: {
+                        title: "🎯 RNA-seq Alignment (Splice-Aware)",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "Why Splice-Aware Alignment?",
+                                text: "Unlike DNA, mRNA reads can span exon-exon junctions (introns are spliced out). Standard DNA aligners (BWA) cannot handle this. Splice-aware aligners like HISAT2 and STAR can align reads across splice junctions by using known splice sites or discovering new ones."
+                            },
+                            {
+                                type: "code",
+                                lang: "bash",
+                                title: "RNA-seq Alignment with HISAT2",
+                                code: `# ============================================
+# RNA-seq ALIGNMENT PIPELINE
+# ============================================
+conda create -n rnaseq_env -c bioconda hisat2 samtools subread -y
+conda activate rnaseq_env
+
+mkdir -p rnaseq_project/{reference,trimmed,aligned,counts}
+
+# ============================================
+# STEP 1: Download reference + annotation
+# ============================================
+# Human GRCh38 (use appropriate for your organism)
+# For practice, use a smaller genome like yeast or Drosophila
+
+# Example: Using Saccharomyces cerevisiae (yeast)
+wget -P reference/ https://ftp.ensembl.org/pub/release-110/fasta/saccharomyces_cerevisiae/dna/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa.gz
+wget -P reference/ https://ftp.ensembl.org/pub/release-110/gtf/saccharomyces_cerevisiae/Saccharomyces_cerevisiae.R64-1-1.110.gtf.gz
+gunzip reference/*.gz
+
+# ============================================
+# STEP 2: Build HISAT2 index
+# ============================================
+# Extract splice sites and exons from GTF (improves alignment)
+hisat2_extract_splice_sites.py reference/*.gtf > reference/splice_sites.txt
+hisat2_extract_exons.py reference/*.gtf > reference/exons.txt
+
+# Build index with splice site information
+hisat2-build \\
+    --ss reference/splice_sites.txt \\
+    --exon reference/exons.txt \\
+    reference/*.fa \\
+    reference/genome_index \\
+    -p 8
+
+# ============================================
+# STEP 3: Align each sample
+# ============================================
+# Loop through all samples
+for sample in control_rep1 control_rep2 control_rep3 treat_rep1 treat_rep2 treat_rep3; do
+    echo "Aligning $sample..."
+    
+    hisat2 \\
+        -x reference/genome_index \\
+        -1 trimmed/\${sample}_1.fastq \\
+        -2 trimmed/\${sample}_2.fastq \\
+        --rna-strandness RF \\
+        --dta \\
+        --summary-file aligned/\${sample}_summary.txt \\
+        -p 8 \\
+        | samtools sort -@ 4 -o aligned/\${sample}_sorted.bam -
+    
+    samtools index aligned/\${sample}_sorted.bam
+    
+    echo "$sample alignment complete"
+done
+
+# --rna-strandness RF = for dUTP/stranded libraries (most common)
+# --dta = downstream transcriptome assembly (for StringTie)
+# For unstranded libraries, omit --rna-strandness
+
+# ============================================
+# STEP 4: Gene-level Quantification
+# ============================================
+# featureCounts (from Subread package) - FAST and accurate
+featureCounts \\
+    -a reference/*.gtf \\
+    -o counts/gene_counts.txt \\
+    -T 8 \\
+    -p --countReadPairs \\
+    -s 2 \\
+    -t exon \\
+    -g gene_id \\
+    aligned/*_sorted.bam
+
+# PARAMETERS:
+# -a          = annotation GTF file
+# -p          = paired-end mode
+# -s 2        = reversely stranded (dUTP). Use -s 0 for unstranded, -s 1 for stranded
+# -t exon     = count reads mapping to exons
+# -g gene_id  = summarize at gene level
+
+# Clean up the count matrix for R
+# Remove first line (command info) and simplify headers
+tail -n +2 counts/gene_counts.txt | cut -f1,7- > counts/gene_counts_clean.txt
+
+echo "✅ RNA-seq Alignment + Counting Complete!"
+echo "Next: Differential Expression Analysis in R"`
+                            }
+                        ]
+                    },
+                    children: []
+                },
+
+                // 2.2 Differential Expression
+                {
+                    id: "differential-expression",
+                    label: "Differential Expression Analysis",
+                    icon: "📈",
+                    color: "green",
+                    content: {
+                        title: "📈 Differential Gene Expression (DGE) Analysis",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "What is DGE?",
+                                text: "Differential gene expression analysis identifies genes whose expression levels significantly differ between experimental conditions (e.g., treated vs control, disease vs healthy). It uses statistical models to account for biological variability and multiple testing."
+                            },
+                            {
+                                type: "math",
+                                title: "Statistical Foundations",
+                                formulas: [
+                                    { name: "Negative Binomial Distribution", desc: "RNA-seq counts follow a negative binomial distribution (over-dispersed Poisson). This is the basis for DESeq2 and edgeR.", formula: "P(Y=k) = NB(μ, α) where μ = mean, α = dispersion parameter" },
+                                    { name: "Log2 Fold Change", desc: "Measures magnitude of expression change.", formula: "log₂FC = log₂(mean_treatment / mean_control). FC=2 means 2× upregulated, FC=-2 means 4× downregulated" },
+                                    { name: "Adjusted P-value (FDR)", desc: "Benjamini-Hochberg correction for multiple testing.", formula: "padj = p-value × (total tests / rank). Use padj < 0.05 as cutoff." },
+                                    { name: "Wald Test (DESeq2)", desc: "Tests if log2FC is significantly different from zero.", formula: "Wald statistic = log₂FC / SE(log₂FC). Follows standard normal under null." }
+                                ]
+                            },
+                            {
+                                type: "tools-table",
+                                title: "DGE Tools Comparison",
+                                headers: ["Tool", "Model", "Normalization", "Best For", "Language"],
+                                rows: [
+                                    ["DESeq2", "Negative Binomial + Wald/LRT", "Median of ratios", "Most RNA-seq experiments (≥3 reps)", "R"],
+                                    ["edgeR", "Negative Binomial + GLM", "TMM", "Small sample sizes, complex designs", "R"],
+                                    ["limma-voom", "Linear model on log-CPM", "TMM + voom weights", "Large sample sizes, microarray background", "R"],
+                                    ["GEO2R", "limma (web interface)", "Auto", "Quick reanalysis of GEO datasets", "Web"],
+                                    ["DEGEAR", "Multiple methods", "Multiple", "Lab-developed comprehensive tool", "R/Web"]
+                                ]
+                            },
+                            {
+                                type: "code",
+                                lang: "r",
+                                title: "Complete DESeq2 Workflow",
+                                code: `# ============================================
+# DIFFERENTIAL EXPRESSION WITH DESeq2
+# ============================================
+# Install packages (run once)
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(c("DESeq2", "apeglm", "EnhancedVolcano",
+                        "pheatmap", "clusterProfiler", "org.Sc.sgd.db"))
+install.packages(c("ggplot2", "RColorBrewer", "ggrepel"))
+
+# ============================================
+# STEP 1: Load libraries
+# ============================================
+library(DESeq2)
+library(ggplot2)
+library(pheatmap)
+library(EnhancedVolcano)
+library(RColorBrewer)
+
+# ============================================
+# STEP 2: Import count data
+# ============================================
+# Option A: From featureCounts output
+count_data <- read.table("counts/gene_counts_clean.txt",
+                         header = TRUE, row.names = 1)
+
+# Clean column names (remove file path if present)
+colnames(count_data) <- gsub("aligned.|_sorted.bam", "",
+                              colnames(count_data))
+
+# Option B: From a count matrix CSV
+# count_data <- read.csv("counts/count_matrix.csv", row.names = 1)
+
+# Create sample information table
+col_data <- data.frame(
+    condition = factor(c(rep("control", 3), rep("treated", 3)),
+                      levels = c("control", "treated")),
+    replicate = factor(rep(1:3, 2)),
+    row.names = colnames(count_data)
+)
+
+# Verify column order matches
+stopifnot(all(rownames(col_data) == colnames(count_data)))
+
+cat("Count matrix dimensions:", dim(count_data), "\\n")
+cat("Samples:", colnames(count_data), "\\n")
+
+# ============================================
+# STEP 3: Create DESeq2 dataset
+# ============================================
+dds <- DESeqDataSetFromMatrix(
+    countData = count_data,
+    colData = col_data,
+    design = ~ condition  # formula: what to test
+)
+
+# Pre-filtering: remove genes with very low counts
+# Keep genes with at least 10 reads total across all samples
+keep <- rowSums(counts(dds)) >= 10
+dds <- dds[keep, ]
+cat("Genes after filtering:", nrow(dds), "\\n")
+
+# ============================================
+# STEP 4: Run DESeq2
+# ============================================
+dds <- DESeq(dds)
+
+# This performs:
+# 1. Estimation of size factors (normalization)
+# 2. Estimation of dispersion
+# 3. Negative Binomial GLM fitting + Wald test
+
+# ============================================
+# STEP 5: Extract results
+# ============================================
+res <- results(dds,
+               contrast = c("condition", "treated", "control"),
+               alpha = 0.05)  # FDR threshold
+
+# Shrink log2FC for visualization (reduces noise for low-count genes)
+res_shrunk <- lfcShrink(dds,
+                         coef = "condition_treated_vs_control",
+                         type = "apeglm")
+
+# Summary
+summary(res)
+
+# Order by adjusted p-value
+res_ordered <- res[order(res$padj), ]
+
+# Export full results
+write.csv(as.data.frame(res_ordered),
+          file = "results/deseq2_all_results.csv")
+
+# Get significant genes
+sig_genes <- subset(res_ordered, padj < 0.05 & abs(log2FoldChange) > 1)
+cat("Significant DEGs (|log2FC| > 1, padj < 0.05):", nrow(sig_genes), "\\n")
+write.csv(as.data.frame(sig_genes),
+          file = "results/deseq2_significant_DEGs.csv")
+
+# ============================================
+# STEP 6: Quality Control Plots
+# ============================================
+
+# --- PCA Plot ---
+vsd <- vst(dds, blind = TRUE)  # variance stabilizing transformation
+pca_data <- plotPCA(vsd, intgroup = "condition", returnData = TRUE)
+percent_var <- round(100 * attr(pca_data, "percentVar"))
+
+ggplot(pca_data, aes(PC1, PC2, color = condition, shape = condition)) +
+    geom_point(size = 4) +
+    xlab(paste0("PC1: ", percent_var[1], "% variance")) +
+    ylab(paste0("PC2: ", percent_var[2], "% variance")) +
+    theme_minimal(base_size = 14) +
+    scale_color_brewer(palette = "Set1") +
+    ggtitle("PCA: Sample Clustering") +
+    theme(plot.title = element_text(hjust = 0.5))
+ggsave("results/PCA_plot.pdf", width = 8, height = 6)
+
+# --- Dispersion Plot ---
+pdf("results/dispersion_plot.pdf")
+plotDispEsts(dds, main = "Dispersion Estimates")
+dev.off()
+
+# --- MA Plot ---
+pdf("results/MA_plot.pdf", width = 8, height = 6)
+plotMA(res_shrunk, ylim = c(-5, 5), main = "MA Plot (shrunk LFC)")
+dev.off()
+
+# ============================================
+# STEP 7: Volcano Plot
+# ============================================
+EnhancedVolcano(res_shrunk,
+    lab = rownames(res_shrunk),
+    x = 'log2FoldChange',
+    y = 'padj',
+    title = 'Treated vs Control',
+    pCutoff = 0.05,
+    FCcutoff = 1.0,
+    pointSize = 2.0,
+    labSize = 3.5,
+    col = c('grey', 'forestgreen', 'steelblue', 'red'),
+    legendPosition = 'right')
+ggsave("results/volcano_plot.pdf", width = 10, height = 8)
+
+# ============================================
+# STEP 8: Heatmap of Top DEGs
+# ============================================
+# Get top 50 DEGs by padj
+top_genes <- head(rownames(res_ordered[!is.na(res_ordered$padj), ]), 50)
+
+# Get normalized counts
+mat <- assay(vsd)[top_genes, ]
+mat <- mat - rowMeans(mat)  # center rows
+
+# Annotation for columns
+anno_col <- data.frame(Condition = col_data$condition,
+                       row.names = rownames(col_data))
+
+pheatmap(mat,
+         annotation_col = anno_col,
+         scale = "none",
+         cluster_rows = TRUE,
+         cluster_cols = TRUE,
+         show_rownames = TRUE,
+         fontsize_row = 7,
+         color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
+         main = "Top 50 DEGs - Heatmap",
+         filename = "results/heatmap_top50.pdf",
+         width = 10, height = 12)
+
+cat("\\n✅ DESeq2 Analysis Complete!\\n")
+cat("Check the 'results/' directory for all outputs.\\n")`
+                            },
+                            {
+                                type: "code",
+                                lang: "r",
+                                title: "Alternative: limma-voom Workflow",
+                                code: `# ============================================
+# DIFFERENTIAL EXPRESSION WITH limma-voom
+# ============================================
+library(limma)
+library(edgeR)
+
+# Create DGEList object
+dge <- DGEList(counts = count_data, group = col_data$condition)
+
+# Filter low-expression genes
+keep <- filterByExpr(dge)
+dge <- dge[keep, , keep.lib.sizes = FALSE]
+
+# TMM normalization
+dge <- calcNormFactors(dge, method = "TMM")
+
+# Design matrix
+design <- model.matrix(~ 0 + condition, data = col_data)
+colnames(design) <- levels(col_data$condition)
+
+# Voom transformation (models mean-variance relationship)
+v <- voom(dge, design, plot = TRUE)
+
+# Fit linear model
+fit <- lmFit(v, design)
+
+# Define contrast
+contrast_matrix <- makeContrasts(
+    treated_vs_control = treated - control,
+    levels = design
+)
+
+# Apply contrasts and empirical Bayes
+fit2 <- contrasts.fit(fit, contrast_matrix)
+fit2 <- eBayes(fit2)
+
+# Get results
+limma_results <- topTable(fit2,
+                          coef = "treated_vs_control",
+                          number = Inf,
+                          sort.by = "P")
+
+# Summary
+summary(decideTests(fit2, p.value = 0.05, lfc = 1))
+
+write.csv(limma_results, "results/limma_voom_results.csv")`
+                            },
+                            {
+                                type: "interpretation",
+                                title: "How to Interpret DGE Results",
+                                items: [
+                                    "**PCA Plot**: Replicates should cluster together. PC1 should separate conditions. Outlier samples may need removal.",
+                                    "**Dispersion Plot**: Gene-wise dispersions (black dots) should shrink toward the fitted trend (red line). This shows the empirical Bayes shrinkage is working.",
+                                    "**MA Plot**: Most genes should be centered at y=0 (no change). Blue dots = significant. The cloud should be symmetric.",
+                                    "**Volcano Plot**: Significant genes appear in the upper corners. |log2FC| > 1 and padj < 0.05 are standard cutoffs.",
+                                    "**Heatmap**: Look for clear separation between conditions. Genes clustering together may share pathways.",
+                                    "**log2FC interpretation**: +1 = 2× up, +2 = 4× up, -1 = 2× down. The magnitude matters biologically.",
+                                    "**Number of DEGs**: Depends on biology. Drug treatment: 100-5000 DEGs. Knockout: can be more. If 0 DEGs, check experimental design."
+                                ]
+                            }
+                        ]
+                    },
+                    children: []
+                },
+
+                // 2.3 GEO Analysis
+                {
+                    id: "geo-analysis",
+                    label: "GEO / Public Data Reanalysis",
+                    icon: "🌐",
+                    color: "green",
+                    content: {
+                        title: "🌐 GEO / Public Data Reanalysis",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "Gene Expression Omnibus (GEO)",
+                                text: "GEO is NCBI's public repository for gene expression and other functional genomics data. You can reanalyze published datasets using GEO2R (web interface) or download raw data for custom analysis. This is invaluable for hypothesis generation, validation, and meta-analysis."
+                            },
+                            {
+                                type: "code",
+                                lang: "r",
+                                title: "Reanalysis of GEO Dataset in R",
+                                code: `# ============================================
+# REANALYZING A GEO DATASET
+# ============================================
+BiocManager::install(c("GEOquery", "limma", "umap"))
+
+library(GEOquery)
+library(limma)
+library(ggplot2)
+
+# ============================================
+# STEP 1: Download GEO Dataset
+# ============================================
+# Example: GSE48350 (Alzheimer's disease brain expression)
+gse <- getGEO("GSE48350", GSEMatrix = TRUE, getGPL = TRUE)
+gse <- gse[[1]]  # if multiple platforms, select first
+
+# Explore the data
+cat("Platform:", annotation(gse), "\\n")
+cat("Samples:", ncol(gse), "\\n")
+cat("Features:", nrow(gse), "\\n")
+
+# View sample info
+sample_info <- pData(gse)
+head(sample_info[, c("title", "geo_accession", "source_name_ch1")])
+
+# ============================================
+# STEP 2: Extract expression matrix
+# ============================================
+expr_matrix <- exprs(gse)
+
+# Check if data is log-transformed
+# If max > 20, likely not log-transformed
+if (max(expr_matrix, na.rm = TRUE) > 20) {
+    expr_matrix <- log2(expr_matrix + 1)
+    cat("Data was log2 transformed\\n")
+}
+
+# ============================================
+# STEP 3: Define groups (customize per dataset)
+# ============================================
+# This depends on the specific dataset - check sample_info
+# Example grouping:
+group <- ifelse(grepl("control|normal", sample_info$source_name_ch1,
+                       ignore.case = TRUE), "Control", "Disease")
+group <- factor(group, levels = c("Control", "Disease"))
+table(group)
+
+# ============================================
+# STEP 4: Differential Expression with limma
+# ============================================
+design <- model.matrix(~ 0 + group)
+colnames(design) <- levels(group)
+
+fit <- lmFit(expr_matrix, design)
+contrast <- makeContrasts(Disease - Control, levels = design)
+fit2 <- contrasts.fit(fit, contrast)
+fit2 <- eBayes(fit2)
+
+results <- topTable(fit2, number = Inf, sort.by = "P")
+
+# Map probe IDs to gene symbols
+feature_data <- fData(gse)
+results$Gene.Symbol <- feature_data[rownames(results), "Gene Symbol"]
+
+# Save
+write.csv(results, "results/GEO_reanalysis_results.csv")
+
+cat("Significant genes (padj < 0.05):",
+    sum(results$adj.P.Val < 0.05), "\\n")`
+                            }
+                        ]
+                    },
+                    children: []
+                },
+
+                // 2.4 Transcriptome Assembly
+                {
+                    id: "transcriptome-assembly",
+                    label: "Transcriptome Assembly",
+                    icon: "🏗️",
+                    color: "green",
+                    content: {
+                        title: "🏗️ Transcriptome Assembly",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "What is Transcriptome Assembly?",
+                                text: "Transcriptome assembly reconstructs full-length transcript sequences from RNA-seq reads. Reference-based assembly uses a reference genome to guide the process, while de novo assembly builds transcripts without any reference (essential for non-model organisms)."
+                            },
+                            {
+                                type: "tools-table",
+                                title: "Assembly Approaches",
+                                headers: ["Approach", "Tool", "When to Use"],
+                                rows: [
+                                    ["Reference-based", "StringTie", "Reference genome available; identify known + novel isoforms"],
+                                    ["Reference-based", "Cufflinks (legacy)", "Older pipeline; largely replaced by StringTie"],
+                                    ["De novo", "Trinity", "No reference genome; non-model organisms"],
+                                    ["De novo", "rnaSPAdes", "Alternative to Trinity; part of SPAdes"]
+                                ]
+                            },
+                            {
+                                type: "code",
+                                lang: "bash",
+                                title: "Reference-Based Transcriptome Assembly",
+                                code: `# ============================================
+# REFERENCE-BASED ASSEMBLY WITH STRINGTIE
+# ============================================
+conda install -c bioconda stringtie gffcompare -y
+
+# For each sample (already aligned with HISAT2 --dta)
+for sample in control_rep1 control_rep2 treat_rep1 treat_rep2; do
+    stringtie aligned/\${sample}_sorted.bam \\
+        -G reference/annotation.gtf \\
+        -o assembly/\${sample}.gtf \\
+        -l \${sample} \\
+        -p 8
+done
+
+# Merge all assemblies
+stringtie --merge \\
+    -G reference/annotation.gtf \\
+    -o assembly/merged.gtf \\
+    assembly/*.gtf
+
+# Compare with reference annotation
+gffcompare -r reference/annotation.gtf \\
+    -o assembly/gffcompare \\
+    assembly/merged.gtf
+
+# Re-estimate abundances with merged annotation
+for sample in control_rep1 control_rep2 treat_rep1 treat_rep2; do
+    stringtie aligned/\${sample}_sorted.bam \\
+        -G assembly/merged.gtf \\
+        -o assembly/ballgown/\${sample}/\${sample}.gtf \\
+        -e -B -p 8
+done
+
+echo "✅ Transcriptome Assembly Complete!"`
+                            }
+                        ]
+                    },
+                    children: []
+                }
+            ]
+        },
+
+        // ====================================================
+        // 3. FUNCTIONAL ENRICHMENT ANALYSIS
+        // ====================================================
+        {
+            id: "functional-enrichment",
+            label: "Functional Enrichment Analysis",
+            icon: "🎯",
+            color: "red",
+            content: {
+                title: "🎯 Functional Enrichment Analysis",
+                sections: [
+                    {
+                        type: "definition",
+                        title: "What is Functional Enrichment?",
+                        text: "After identifying differentially expressed genes, enrichment analysis determines whether specific biological functions, pathways, or gene sets are over-represented in your gene list compared to what's expected by chance. This transforms a gene list into biological insight."
+                    },
+                    {
+                        type: "questions",
+                        title: "Questions Answered",
+                        items: [
+                            "What biological processes are affected by the treatment/condition?",
+                            "Which molecular functions are enriched in upregulated genes?",
+                            "What cellular components are involved?",
+                            "Which KEGG/Reactome pathways are significantly affected?",
+                            "Are there common regulatory motifs in the gene set?"
+                        ]
+                    },
+                    {
+                        type: "math",
+                        title: "Statistical Methods",
+                        formulas: [
+                            { name: "Hypergeometric Test (ORA)", desc: "Over-Representation Analysis. Tests if the overlap between your gene list and a gene set is greater than expected by chance.", formula: "P(X ≥ k) = Σ C(K,x)·C(N-K,n-x) / C(N,n) where N=total genes, K=genes in pathway, n=your gene list, k=overlap" },
+                            { name: "GSEA (Kolmogorov-Smirnov)", desc: "Gene Set Enrichment Analysis. Uses ALL genes (ranked by fold change) rather than a cutoff-based list.", formula: "Enrichment Score = max deviation of running sum statistic from zero" },
+                            { name: "FDR Correction", desc: "Multiple testing correction (Benjamini-Hochberg) is critical when testing hundreds of pathways." }
+                        ]
+                    }
+                ]
+            },
+            children: [
+                {
+                    id: "go-enrichment",
+                    label: "GO Enrichment (clusterProfiler)",
+                    icon: "🏷️",
+                    color: "red",
+                    content: {
+                        title: "🏷️ Gene Ontology Enrichment with clusterProfiler",
+                        sections: [
+                            {
+                                type: "code",
+                                lang: "r",
+                                title: "Complete GO + KEGG Enrichment Pipeline",
+                                code: `# ============================================
+# FUNCTIONAL ENRICHMENT WITH clusterProfiler
+# ============================================
+BiocManager::install(c("clusterProfiler", "enrichplot",
+                        "org.Hs.eg.db", "DOSE", "pathview"))
+
+library(clusterProfiler)
+library(enrichplot)
+library(org.Hs.eg.db)  # Human annotation; change for other organisms
+# org.Mm.eg.db = Mouse, org.Sc.sgd.db = Yeast, org.Dm.eg.db = Drosophila
+library(ggplot2)
+
+# ============================================
+# STEP 1: Prepare gene list from DESeq2 results
+# ============================================
+# Load DESeq2 results
+res <- read.csv("results/deseq2_all_results.csv", row.names = 1)
+
+# Get significant DEGs
+sig_genes <- subset(res, padj < 0.05 & abs(log2FoldChange) > 1)
+
+# Convert gene symbols to Entrez IDs (required for most enrichment tools)
+gene_list_entrez <- bitr(rownames(sig_genes),
+                          fromType = "SYMBOL",  # or "ENSEMBL"
+                          toType = "ENTREZID",
+                          OrgDb = org.Hs.eg.db)
+
+cat("Converted", nrow(gene_list_entrez), "out of",
+    nrow(sig_genes), "genes\\n")
+
+# For UP and DOWN separately
+up_genes <- rownames(sig_genes[sig_genes$log2FoldChange > 1, ])
+down_genes <- rownames(sig_genes[sig_genes$log2FoldChange < -1, ])
+
+up_entrez <- bitr(up_genes, fromType = "SYMBOL",
+                  toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+down_entrez <- bitr(down_genes, fromType = "SYMBOL",
+                    toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+
+# ============================================
+# STEP 2: GO Over-Representation Analysis
+# ============================================
+# Biological Process (BP)
+ego_bp <- enrichGO(
+    gene          = gene_list_entrez$ENTREZID,
+    OrgDb         = org.Hs.eg.db,
+    ont           = "BP",       # "BP", "MF", "CC", or "ALL"
+    pAdjustMethod = "BH",
+    pvalueCutoff  = 0.05,
+    qvalueCutoff  = 0.05,
+    readable      = TRUE        # convert Entrez IDs to symbols
+)
+
+# Simplify redundant GO terms
+ego_bp_simplified <- simplify(ego_bp,
+                               cutoff = 0.7,
+                               by = "p.adjust")
+
+# View top results
+head(ego_bp_simplified, 20)
+
+# Save
+write.csv(as.data.frame(ego_bp_simplified),
+          "results/GO_BP_enrichment.csv")
+
+# ============================================
+# STEP 3: Visualizations
+# ============================================
+
+# --- Dot plot ---
+dotplot(ego_bp_simplified, showCategory = 20,
+        title = "GO Biological Process Enrichment") +
+    theme(axis.text.y = element_text(size = 9))
+ggsave("results/GO_BP_dotplot.pdf", width = 10, height = 10)
+
+# --- Bar plot ---
+barplot(ego_bp_simplified, showCategory = 15,
+        title = "GO BP - Bar Plot")
+ggsave("results/GO_BP_barplot.pdf", width = 10, height = 8)
+
+# --- Enrichment Map (network of related terms) ---
+ego_bp_pair <- pairwise_termsim(ego_bp_simplified)
+emapplot(ego_bp_pair, showCategory = 30) +
+    ggtitle("GO BP - Enrichment Map")
+ggsave("results/GO_BP_emap.pdf", width = 12, height = 12)
+
+# --- Category Net Plot (genes connecting to terms) ---
+cnetplot(ego_bp_simplified, showCategory = 5,
+         categorySize = "pvalue") +
+    ggtitle("GO BP - Gene-Concept Network")
+ggsave("results/GO_BP_cnet.pdf", width = 14, height = 12)
+
+# --- Tree Plot ---
+treeplot(ego_bp_pair) +
+    ggtitle("GO BP - Tree Plot")
+ggsave("results/GO_BP_treeplot.pdf", width = 14, height = 10)
+
+# ============================================
+# STEP 4: KEGG Pathway Enrichment
+# ============================================
+kk <- enrichKEGG(
+    gene         = gene_list_entrez$ENTREZID,
+    organism     = 'hsa',       # 'mmu' for mouse, 'sce' for yeast
+    pvalueCutoff = 0.05
+)
+
+head(kk)
+write.csv(as.data.frame(kk), "results/KEGG_enrichment.csv")
+
+dotplot(kk, showCategory = 15, title = "KEGG Pathway Enrichment")
+ggsave("results/KEGG_dotplot.pdf", width = 10, height = 8)
+
+# Visualize specific pathway
+library(pathview)
+pathview(gene.data = setNames(sig_genes$log2FoldChange,
+                               gene_list_entrez$ENTREZID),
+         pathway.id = "hsa04110",   # Cell cycle as example
+         species    = "hsa",
+         limit      = list(gene = 3))
+
+# ============================================
+# STEP 5: GSEA (Gene Set Enrichment Analysis)
+# ============================================
+# Prepare RANKED gene list (ALL genes, not just significant)
+gene_rank <- res$log2FoldChange
+names(gene_rank) <- rownames(res)
+gene_rank <- sort(gene_rank, decreasing = TRUE)
+gene_rank <- gene_rank[!is.na(gene_rank)]
+
+# Convert names to Entrez
+gene_map <- bitr(names(gene_rank), fromType = "SYMBOL",
+                 toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+gene_rank_entrez <- gene_rank[gene_map$SYMBOL]
+names(gene_rank_entrez) <- gene_map$ENTREZID
+
+# Run GSEA on GO
+gsea_go <- gseGO(
+    geneList     = gene_rank_entrez,
+    OrgDb        = org.Hs.eg.db,
+    ont          = "BP",
+    minGSSize    = 15,
+    maxGSSize    = 500,
+    pvalueCutoff = 0.05,
+    verbose      = TRUE
+)
+
+# GSEA on KEGG
+gsea_kegg <- gseKEGG(
+    geneList     = gene_rank_entrez,
+    organism     = 'hsa',
+    minGSSize    = 15,
+    pvalueCutoff = 0.05
+)
+
+# GSEA plot for specific term
+gseaplot2(gsea_go, geneSetID = 1:3,
+          title = "Top 3 GSEA GO Terms")
+ggsave("results/GSEA_GO_top3.pdf", width = 10, height = 8)
+
+cat("\\n✅ Functional Enrichment Analysis Complete!\\n")`
+                            },
+                            {
+                                type: "interpretation",
+                                title: "How to Interpret Enrichment Results",
+                                items: [
+                                    "**GeneRatio**: Proportion of your DEGs that belong to this term. Higher = more genes involved.",
+                                    "**p.adjust (FDR)**: Corrected p-value. Only trust results with padj < 0.05.",
+                                    "**Count**: Number of your DEGs in this term. Very small counts may not be biologically meaningful.",
+                                    "**GSEA NES (Normalized Enrichment Score)**: Positive NES = enriched in upregulated genes. Negative = enriched in downregulated.",
+                                    "**Leading edge genes**: The core genes driving the enrichment signal in GSEA.",
+                                    "**Redundancy**: Many GO terms are related. Use simplify() or REVIGO to reduce redundancy.",
+                                    "**ORA vs GSEA**: ORA requires a cutoff (loses info); GSEA uses all genes (more powerful). Use both."
+                                ]
+                            }
+                        ]
+                    },
+                    children: []
+                }
+            ]
+        },
+
+        // ====================================================
+        // 4. PHYLOGENY & PHYLOGENOMICS
+        // ====================================================
+        {
+            id: "phylogenetics",
+            label: "Phylogeny & Phylogenomics",
+            icon: "🌳",
+            color: "orange",
+            content: {
+                title: "🌳 Phylogeny & Phylogenomics",
+                sections: [
+                    {
+                        type: "definition",
+                        title: "What is Phylogenetics?",
+                        text: "Phylogenetics is the study of evolutionary relationships among organisms (or genes/proteins) represented as branching tree diagrams (phylogenetic trees). Phylogenomics extends this to whole-genome scale analysis, using hundreds or thousands of genes to infer species relationships."
+                    },
+                    {
+                        type: "questions",
+                        title: "Biological Questions",
+                        items: [
+                            "How are species/organisms evolutionarily related?",
+                            "When did species diverge (molecular dating)?",
+                            "Has horizontal gene transfer (HGT) occurred?",
+                            "Which genes show different evolutionary histories than the species tree?",
+                            "What is the evolutionary rate of a gene/lineage?",
+                            "What are the selection pressures (dN/dS) on specific genes?"
+                        ]
+                    },
+                    {
+                        type: "math",
+                        title: "Key Evolutionary Models",
+                        formulas: [
+                            { name: "Jukes-Cantor (JC69)", desc: "Simplest substitution model. Assumes equal base frequencies and equal substitution rates.", formula: "d = -3/4 × ln(1 - 4/3 × p), where p = proportion of different sites" },
+                            { name: "Kimura 2-Parameter (K2P)", desc: "Distinguishes transitions (purine↔purine, pyrimidine↔pyrimidine) from transversions (purine↔pyrimidine).", formula: "d = -1/2 × ln((1-2P-Q) × √(1-2Q)), where P = transition freq, Q = transversion freq" },
+                            { name: "GTR (General Time Reversible)", desc: "Most general reversible model. 6 substitution rates + 4 base frequencies. Used by RAxML." },
+                            { name: "Gamma Distribution (+Γ)", desc: "Models rate variation among sites. Shape parameter α: low α = high rate variation." },
+                            { name: "Bootstrap Support", desc: "Resamples alignment columns with replacement to assess branch confidence. Values >70% are generally considered supported." }
+                        ]
+                    },
+                    {
+                        type: "tools-table",
+                        title: "Phylogenetics Tools",
+                        headers: ["Tool", "Method", "Best For"],
+                        rows: [
+                            ["MEGA", "NJ, ML, MP, UPGMA", "Teaching, small datasets, molecular dating, GUI"],
+                            ["RAxML / RAxML-NG", "Maximum Likelihood", "Large datasets, publication-quality ML trees"],
+                            ["IQ-TREE", "Maximum Likelihood", "Model selection (ModelFinder) + ultrafast bootstrap"],
+                            ["MrBayes", "Bayesian Inference", "Posterior probabilities, complex models"],
+                            ["BEAST2", "Bayesian + Molecular Clock", "Molecular dating, divergence time estimation"],
+                            ["ape (R)", "NJ, ML, distance methods", "R-based analysis, Kimura distances, plotting"],
+                            ["FigTree", "Visualization", "Beautiful tree visualization and annotation"],
+                            ["iTOL", "Visualization (web)", "Publication-ready interactive tree visualization"],
+                            ["HGTPhyloDetect", "HGT Detection", "Detecting horizontal gene transfer events"],
+                            ["NCBI Genome Workbench", "Integrated analysis", "Sequence alignment + tree building GUI"]
+                        ]
+                    }
+                ]
+            },
+            children: [
+                {
+                    id: "phylo-tree-construction",
+                    label: "Tree Construction (MEGA & R)",
+                    icon: "🌲",
+                    color: "orange",
+                    content: {
+                        title: "🌲 Constructing Phylogenetic Trees",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "Tree Construction Methods",
+                                text: "There are three major approaches: (1) Distance-based (NJ, UPGMA) — fast, uses pairwise distances; (2) Maximum Likelihood (ML) — finds tree that maximizes probability of observed data; (3) Bayesian — generates posterior distribution of trees. ML and Bayesian are statistically superior but computationally expensive."
+                            },
+                            {
+                                type: "code",
+                                lang: "r",
+                                title: "Phylogenetic Analysis in R (ape + phangorn)",
+                                code: `# ============================================
+# PHYLOGENETIC TREE CONSTRUCTION IN R
+# ============================================
+install.packages(c("ape", "phangorn", "ggtree"))
+BiocManager::install("ggtree")
+
+library(ape)
+library(phangorn)
+library(ggtree)
+
+# ============================================
+# STEP 1: Read sequence alignment
+# ============================================
+# Input: Multiple sequence alignment in FASTA format
+# You can create this with MUSCLE, MAFFT, or ClustalW
+aln <- read.phyDat("data/aligned_sequences.fasta",
+                     format = "fasta",
+                     type = "DNA")  # or "AA" for protein
+
+cat("Number of sequences:", length(aln), "\\n")
+cat("Alignment length:", ncol(as.character(aln)), " sites\\n")
+
+# ============================================
+# STEP 2: Distance-based tree (Neighbor-Joining)
+# ============================================
+# Compute distance matrix using Kimura 2-parameter model
+dm_k2p <- dist.dna(as.DNAbin(aln), model = "K80")  # K80 = Kimura 2-param
+# Other models: "JC69", "F84", "TN93", "raw"
+
+# Build NJ tree
+nj_tree <- nj(dm_k2p)
+
+# Root the tree (if outgroup known)
+# nj_tree <- root(nj_tree, outgroup = "outgroup_name")
+
+# Bootstrap (1000 replicates)
+set.seed(42)
+nj_bs <- boot.phylo(nj_tree, as.DNAbin(aln),
+                     function(x) nj(dist.dna(x, model = "K80")),
+                     B = 1000, quiet = TRUE)
+
+# Add bootstrap values to tree
+nj_tree$node.label <- round(nj_bs / 1000 * 100)
+
+# Plot
+pdf("results/nj_tree_k2p.pdf", width = 10, height = 8)
+plot(nj_tree, show.node.label = TRUE, cex = 0.8)
+title("Neighbor-Joining Tree (Kimura 2-Parameter)")
+add.scale.bar()
+dev.off()
+
+# Beautiful plot with ggtree
+ggtree(nj_tree) +
+    geom_tiplab(size = 3) +
+    geom_nodelab(aes(label = label), size = 2.5,
+                 hjust = -0.3, color = "red") +
+    geom_treescale() +
+    ggtitle("NJ Tree with Bootstrap Support")
+ggsave("results/nj_tree_ggtree.pdf", width = 10, height = 8)
+
+# ============================================
+# STEP 3: Maximum Likelihood Tree (phangorn)
+# ============================================
+# Model selection - find best substitution model
+mt <- modelTest(aln, tree = nj_tree,
+                model = c("JC", "K80", "HKY", "GTR"),
+                control = pml.control(maxit = 50))
+print(mt)
+
+# Select best model (lowest AIC/BIC)
+best_model <- mt[which.min(mt$AIC), ]
+cat("Best model:", best_model$Model, "\\n")
+
+# Fit ML tree with best model
+# Example with GTR+G+I
+fit_start <- pml(nj_tree, data = aln)
+fit_ml <- optim.pml(fit_start,
+                     model = "GTR",
+                     optInv = TRUE,
+                     optGamma = TRUE,
+                     k = 4,           # gamma categories
+                     rearrangement = "stochastic",
+                     control = pml.control(maxit = 100))
+
+cat("Log-likelihood:", fit_ml$logLik, "\\n")
+
+# Bootstrap for ML tree
+bs_ml <- bootstrap.pml(fit_ml, bs = 100,
+                        optNni = TRUE,
+                        control = pml.control(maxit = 50))
+ml_tree_bs <- plotBS(fit_ml$tree, bs_ml,
+                      p = 50, type = "phylogram")
+
+# Save ML tree
+pdf("results/ml_tree_gtr.pdf", width = 10, height = 8)
+plot(ml_tree_bs, show.node.label = TRUE, cex = 0.8)
+title("Maximum Likelihood Tree (GTR+G+I)")
+add.scale.bar()
+dev.off()
+
+cat("\\n✅ Phylogenetic Analysis Complete!\\n")`
+                            },
+                            {
+                                type: "code",
+                                lang: "bash",
+                                title: "RAxML Maximum Likelihood Tree",
+                                code: `# ============================================
+# RAxML-NG: MAXIMUM LIKELIHOOD PHYLOGENY
+# ============================================
+conda install -c bioconda raxml-ng mafft -y
+
+# STEP 1: Multiple Sequence Alignment (if not done)
+mafft --auto input_sequences.fasta > aligned_sequences.fasta
+
+# STEP 2: Run RAxML-NG
+# Model selection + tree search + bootstrap in one command
+raxml-ng --all \\
+    --msa aligned_sequences.fasta \\
+    --model GTR+G \\
+    --tree pars{10},rand{10} \\
+    --bs-trees 1000 \\
+    --threads auto \\
+    --seed 42 \\
+    --prefix results/raxml_output
+
+# OUTPUT FILES:
+# .bestTree        - Best ML tree
+# .support         - Best tree with bootstrap support values
+# .bootstraps      - All bootstrap trees
+# .bestModel       - Optimized model parameters
+# .log             - Run log
+
+# ALTERNATIVE: Use ModelTest-NG for automatic model selection
+modeltest-ng --datatype nt \\
+    --input aligned_sequences.fasta \\
+    --output results/modeltest \\
+    --topology ml
+
+# Then use the recommended model from modeltest output`
+                            },
+                            {
+                                type: "interpretation",
+                                title: "How to Interpret Phylogenetic Trees",
+                                items: [
+                                    "**Branch lengths**: Proportional to evolutionary distance (substitutions per site). Longer = more divergent.",
+                                    "**Bootstrap values ≥70%**: Generally considered well-supported. ≥95% = strong support.",
+                                    "**Bayesian posterior probability ≥0.95**: Equivalent to strong support in Bayesian framework.",
+                                    "**Monophyletic group (clade)**: All descendants of a common ancestor. Confirms taxonomic grouping.",
+                                    "**Long branch attraction**: Distantly related taxa with fast evolution may cluster together artifactually. Use ML/Bayesian methods to mitigate.",
+                                    "**Rooting**: Use an outgroup (known distant relative) to root the tree and determine the direction of evolution.",
+                                    "**Polytomy**: A node with >2 descendants indicates unresolved relationships (insufficient data or rapid radiation)."
+                                ]
+                            }
+                        ]
+                    },
+                    children: []
+                },
+                {
+                    id: "molecular-dating",
+                    label: "Molecular Dating",
+                    icon: "⏰",
+                    color: "orange",
+                    content: {
+                        title: "⏰ Molecular Dating & Divergence Times",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "What is Molecular Dating?",
+                                text: "Molecular dating estimates when evolutionary events (speciation, gene duplication) occurred in absolute time, using molecular clock models. The molecular clock hypothesis states that DNA/protein sequences evolve at a roughly constant rate over time, which can be calibrated with fossil or biogeographic evidence."
+                            },
+                            {
+                                type: "math",
+                                title: "Molecular Clock",
+                                formulas: [
+                                    { name: "Strict Clock", desc: "Assumes constant rate across all lineages.", formula: "t = d / (2r), where d = genetic distance, r = substitution rate, t = divergence time" },
+                                    { name: "Relaxed Clock", desc: "Allows rate variation across lineages (uncorrelated lognormal or autocorrelated). Used by BEAST2." },
+                                    { name: "Calibration", desc: "Requires at least one fossil/external calibration point to convert relative distances to absolute time." }
+                                ]
+                            },
+                            {
+                                type: "paragraph",
+                                text: "Tools: MEGA (RelTime method — fast, approximate), BEAST2 (Bayesian, gold standard, computationally intensive), r8s (penalized likelihood). For most studies, BEAST2 with relaxed molecular clock is recommended."
+                            }
+                        ]
+                    },
+                    children: []
+                },
+                {
+                    id: "hgt-detection",
+                    label: "Horizontal Gene Transfer",
+                    icon: "↔️",
+                    color: "orange",
+                    content: {
+                        title: "↔️ Horizontal Gene Transfer (HGT) Detection",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "What is HGT?",
+                                text: "Horizontal Gene Transfer (HGT) is the transfer of genetic material between organisms that is not through vertical inheritance (parent to offspring). Common in bacteria. Detection methods include phylogenetic incongruence (gene tree vs species tree), compositional methods (GC content, codon usage), and synteny-based approaches."
+                            },
+                            {
+                                type: "tools-table",
+                                title: "HGT Detection Tools",
+                                headers: ["Tool", "Method", "Notes"],
+                                rows: [
+                                    ["HGTPhyloDetect", "Phylogenetic + compositional", "Combines multiple approaches"],
+                                    ["RANGER-DTL", "Reconciliation (duplication-transfer-loss)", "Statistical framework"],
+                                    ["Alien_hunter", "Compositional (interpolated variable order motifs)", "Detects genomic islands"],
+                                    ["IslandViewer", "Multiple methods (web)", "Integrates several HGT detection tools"],
+                                    ["T-REX", "Tree reconciliation", "Web server for HGT inference"]
+                                ]
+                            }
+                        ]
+                    },
+                    children: []
+                }
+            ]
+        },
+
+        // ====================================================
+        // 5. MICROBIAL / METAGENOMICS
+        // ====================================================
+        {
+            id: "metagenomics",
+            label: "Microbial & Metagenomic Analysis",
+            icon: "🦠",
+            color: "pink",
+            content: {
+                title: "🦠 Microbial & Metagenomic Analysis",
+                sections: [
+                    {
+                        type: "definition",
+                        title: "Overview",
+                        text: "Microbial community analysis studies the composition, diversity, and function of microbial communities. Two main approaches: (1) Amplicon sequencing (16S/18S/ITS) — identifies 'who is there'; (2) Shotgun metagenomics — identifies 'who is there' AND 'what can they do' (functional potential)."
+                    },
+                    {
+                        type: "questions",
+                        title: "Biological Questions",
+                        items: [
+                            "What microbial species are present in my sample?",
+                            "How does community composition differ between conditions?",
+                            "What is the alpha diversity (within-sample richness/evenness)?",
+                            "What is the beta diversity (between-sample similarity)?",
+                            "What metabolic pathways are encoded in the community?",
+                            "Are there biomarker taxa associated with a condition?"
+                        ]
+                    }
+                ]
+            },
+            children: [
+                {
+                    id: "16s-mothur",
+                    label: "16S rRNA Analysis (mothur)",
+                    icon: "🔬",
+                    color: "pink",
+                    content: {
+                        title: "🔬 16S rRNA Analysis with mothur",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "mothur Pipeline",
+                                text: "mothur is one of the most widely used tools for 16S rRNA amplicon analysis. It follows the MiSeq SOP (Standard Operating Procedure) developed by Pat Schloss. The pipeline includes quality filtering, chimera removal, OTU clustering, taxonomy classification, and diversity analysis."
+                            },
+                            {
+                                type: "code",
+                                lang: "bash",
+                                title: "mothur MiSeq SOP Pipeline",
+                                code: `# ============================================
+# 16S rRNA ANALYSIS WITH MOTHUR (MiSeq SOP)
+# ============================================
+# Download and install mothur: https://mothur.org/wiki/installation/
+# Download SILVA reference: https://mothur.org/wiki/silva_reference_files/
+
+# Start mothur
+mothur
+
+# ---- Inside mothur interactive mode ----
+
+# STEP 1: Combine paired-end reads
+make.contigs(file=sample_file.txt, processors=8)
+summary.seqs(fasta=combined.trim.contigs.fasta)
+
+# STEP 2: Quality filtering
+screen.seqs(fasta=current, maxambig=0, maxlength=275, maxhomop=8)
+unique.seqs()
+count.seqs(name=current, group=current)
+
+# STEP 3: Align to SILVA reference
+align.seqs(fasta=current, reference=silva.nr_v138.align)
+screen.seqs(fasta=current, count=current, start=1968, end=11550)
+filter.seqs(fasta=current, vertical=T, trump=.)
+unique.seqs(fasta=current, count=current)
+
+# STEP 4: Pre-clustering (denoise, allow 2 diffs per 100bp)
+pre.cluster(fasta=current, count=current, diffs=2)
+
+# STEP 5: Chimera removal
+chimera.vsearch(fasta=current, count=current, dereplicate=t)
+remove.seqs(fasta=current, accnos=current)
+
+# STEP 6: Taxonomy classification
+classify.seqs(fasta=current, count=current,
+    reference=silva.nr_v138.align,
+    taxonomy=silva.nr_v138.tax, cutoff=80)
+remove.lineage(fasta=current, count=current, taxonomy=current,
+    taxon=Chloroplast-Mitochondria-unknown-Archaea-Eukaryota)
+
+# STEP 7: OTU Clustering (97% similarity)
+dist.seqs(fasta=current, cutoff=0.03)
+cluster(column=current, count=current)
+make.shared(list=current, count=current, label=0.03)
+classify.otu(list=current, count=current, taxonomy=current, label=0.03)
+
+# STEP 8: Alpha Diversity
+rarefaction.single(shared=current, calc=sobs, freq=100)
+summary.single(shared=current,
+    calc=nseqs-sobs-coverage-shannon-invsimpson-chao)
+
+# STEP 9: Beta Diversity
+dist.shared(shared=current, calc=thetayc-braycurtis, subsample=t)
+pcoa(phylip=current)
+amova(phylip=current, design=mouse.design)
+
+# STEP 10: Differential abundance (LEfSe-style)
+lefse(shared=current, design=current)
+
+# Export for visualization
+get.oturep(fasta=current, count=current, list=current, label=0.03)
+
+# quit mothur
+quit()`
+                            }
+                        ]
+                    },
+                    children: []
+                },
+                {
+                    id: "16s-qiime2",
+                    label: "16S rRNA Analysis (QIIME2)",
+                    icon: "🧫",
+                    color: "pink",
+                    content: {
+                        title: "🧫 16S rRNA Analysis with QIIME2",
+                        sections: [
+                            {
+                                type: "definition",
+                                title: "QIIME2",
+                                text: "QIIME2 is a next-generation microbiome analysis platform. It uses ASVs (Amplicon Sequence Variants) via DADA2 or Deblur instead of OTUs, providing single-nucleotide resolution. It emphasizes reproducibility through provenance tracking."
+                            },
+                            {
+                                type: "code",
+                                lang: "bash",
+                                title: "QIIME2 Pipeline",
+                                code: `# ============================================
+# 16S rRNA ANALYSIS WITH QIIME2
+# ============================================
+# Install QIIME2 via conda
+wget https://data.qiime2.org/distro/amplicon/qiime2-amplicon-2024.2-py38-linux-conda.yml
+conda env create -n qiime2 --file qiime2-amplicon-2024.2-py38-linux-conda.yml
+conda activate qiime2
+
+mkdir -p qiime2_project/{raw_data,results}
+cd qiime2_project
+
+# ============================================
+# STEP 1: Import data
+# ============================================
+# Create manifest file (tab-separated)
+# sample-id    forward-read    reverse-read
+# Format depends on your data structure
+
+qiime tools import \\
+    --type 'SampleData[PairedEndSequencesWithQuality]' \\
+    --input-path raw_data/ \\
+    --input-format CasavaOneEightSingleLanePerSampleDirFmt \\
+    --output-path results/demux-paired.qza
+
+# Visualize read quality
+qiime demux summarize \\
+    --i-data results/demux-paired.qza \\
+    --o-visualization results/demux-summary.qzv
+# View at https://view.qiime2.org/
+
+# ============================================
+# STEP 2: Denoise with DADA2 (ASV generation)
+# ============================================
+qiime dada2 denoise-paired \\
+    --i-demultiplexed-seqs results/demux-paired.qza \\
+    --p-trunc-len-f 250 \\
+    --p-trunc-len-r 200 \\
+    --p-trim-left-f 0 \\
+    --p-trim-left-r 0 \\
+    --p-n-threads 8 \\
+    --o-table results/table.qza \\
+    --o-representative-sequences results/rep-seqs.qza \\
+    --o-denoising-stats results/denoising-stats.qza
+
+# ============================================
+# STEP 3: Taxonomy Classification
+# ============================================
+# Download pre-trained classifier (SILVA 138)
+wget -P reference/ https://data.qiime2.org/2024.2/common/silva-138-99-nb-classifier.qza
+
+qiime feature-classifier classify-sklearn \\
+    --i-classifier reference/silva-138-99-nb-classifier.qza \\
+    --i-reads results/rep-seqs.qza \\
+    --o-classification results/taxonomy.qza
+
+# Visualize taxonomy
+qiime taxa barplot \\
+    --i-table results/table.qza \\
+    --i-taxonomy results/taxonomy.qza \\
+    --m-metadata-file metadata.tsv \\
+    --o-visualization results/taxa-barplot.qzv
+
+# ============================================
+# STEP 4: Phylogenetic Tree
+# ============================================
+qiime phylogeny align-to-tree-mafft-fasttree \\
+    --i-sequences results/rep-seqs.qza \\
+    --o-alignment results/aligned-rep-seqs.qza \\
+    --o-masked-alignment results/masked-aligned-rep-seqs.qza \\
+    --o-tree results/unrooted-tree.qza \\
+    --o-rooted-tree results/rooted-tree.qza
+
+# ============================================
+# STEP 5: Alpha & Beta Diversity
+# ============================================
+# Determine rarefaction depth from feature table summary
+qiime feature-table summarize \\
+    --i-table results/table.qza \\
+    --o-visualization results/table-summary.qzv
+
+# Core diversity metrics (set sampling-depth based on above)
+qiime diversity core-metrics-phylogenetic \\
+    --i-phylogeny results/rooted-tree.qza \\
+    --i-table results/table.qza \\
+    --p-sampling-depth 10000 \\
+    --m-metadata-file metadata.tsv \\
+    --output-dir results/diversity/
+
+# Alpha diversity significance
+qiime diversity alpha-group-significance \\
+    --i-alpha-diversity results/diversity/shannon_vector.qza \\
+    --m-metadata-file metadata.tsv \\
+    --o-visualization results/shannon-significance.qzv
+
+# Beta diversity significance (PERMANOVA)
+qiime diversity beta-group-significance \\
+    --i-distance-matrix results/diversity/weighted_unifrac_distance_matrix.qza \\
+    --m-metadata-file metadata.tsv \\
+    --m-metadata-column treatment \\
+    --o-visualization results/weighted-unifrac-significance.qzv
+
+# ============================================
+# STEP 6: Differential Abundance (ANCOM-BC)
+# ============================================
+qiime composition ancombc \\
+    --i-table results/table.qza \\
+    --m-metadata-file metadata.tsv \\
+    --p-formula treatment \\
+    --o-differentials results/ancombc-results.qza
+
+echo "✅ QIIME2 Analysis Complete!"
+echo "View .qzv files at https://view.qiime2.org/"`
+                            },
+                            {
+                                type: "interpretation",
+                                title: "How to Interpret Microbiome Results",
+                                items: [
+                                    "**Alpha diversity (Shannon)**: Higher = more diverse community. Compare between groups with Kruskal-Wallis test.",
+                                    "**Alpha diversity (Observed ASVs/OTUs)**: Richness — how many different taxa are present.",
+                                    "**Beta diversity (Bray-Curtis)**: Compositional dissimilarity. Visualize with PCoA. Clusters = similar communities.",
+                                    "**Beta diversity (UniFrac)**: Incorporates phylogenetic distances. Weighted = considers abundance; Unweighted = presence/absence only.",
+                                    "**PERMANOVA (p < 0.05)**: Groups have significantly different community compositions.",
+                                    "**Taxonomic bar plots**: Look for shifts in dominant phyla/genera between conditions.",
+                                    "**ANCOM-BC/LEfSe**: Identifies specific taxa that are differentially abundant between groups. LDA score > 2 is significant."
+                                ]
+                            }
+                        ]
+                    },
+                    children: []
+                }
+            ]
+        },
+
+        // ====================================================
+        // 6. COMPARATIVE GENOMICS
+        // ====================================================
+        {
+            id: "comparative-genomics",
+            label: "Comparative Genomics",
+            icon: "🔄",
+            color: "red",
+            content: {
+                title: "🔄 Comparative Genomics",
+                sections: [
+                    {
+                        type: "definition",
+                        title: "What is Comparative Genomics?",
+                        text: "Comparative genomics compares the genome sequences of different species (or strains) to identify conserved regions, gene gains/losses, genomic rearrangements, and evolutionary patterns. It helps understand genome evolution, identify functional elements, and discover species-specific adaptations."
+                    },
+                    {
+                        type: "questions",
+                        title: "Biological Questions",
+                        items: [
+                            "What genes are conserved across species (orthologs)?",
+                            "What genes are unique to a species (species-specific)?",
+                            "What genomic rearrangements have occurred (synteny)?",
+                            "What are the core and accessory genes in a bacterial pangenome?",
+                            "Which regions are under positive/purifying selection?"
+                        ]
+                    },
+                    {
+                        type: "tools-table",
+                        title: "Comparative Genomics Tools",
+                        headers: ["Tool", "Purpose", "Notes"],
+                        rows: [
+                            ["OrthoFinder", "Ortholog detection", "Accurate, scalable, infers gene trees + species tree"],
+                            ["Roary / Panaroo", "Bacterial pangenome", "Core/accessory genome analysis"],
+                            ["MUMmer / nucmer", "Whole genome alignment", "Fast, for closely related genomes"],
+                            ["Mauve / progressiveMauve", "Multiple genome alignment", "Visualizes rearrangements (LCBs)"],
+                            ["SyMAP / MCScanX", "Synteny analysis", "Visualize conserved gene order"],
+                            ["BLAST / DIAMOND", "Sequence similarity search", "Foundation of most comparative analyses"],
+                            ["dN/dS (PAML/HyPhy)", "Selection analysis", "Detect positive/purifying selection"]
+                        ]
+                    }
+                ]
+            },
+            children: [
+                {
+                    id: "ortholog-detection",
+                    label: "Ortholog Detection",
+                    icon: "🔗",
+                    color: "red",
+                    content: {
+                        title: "🔗 Ortholog Detection with OrthoFinder",
+                        sections: [
+                            {
+                                type: "code",
+                                lang: "bash",
+                                title: "OrthoFinder Workflow",
+                                code: `# ============================================
+# ORTHOLOG DETECTION WITH ORTHOFINDER
+# ============================================
+conda install -c bioconda orthofinder -y
+
+mkdir -p orthofinder_project/proteomes
+cd orthofinder_project
+
+# STEP 1: Prepare protein FASTA files (one per species)
+# Place .faa files in proteomes/ directory
+# Example: species1.faa, species2.faa, species3.faa
+# Each file contains all protein sequences for that species
+
+# STEP 2: Run OrthoFinder
+orthofinder -f proteomes/ \\
+    -t 8 \\
+    -a 4 \\
+    -S diamond \\
+    -M msa
+
+# OUTPUT (in proteomes/OrthoFinder/Results_*/ ):
+# Orthogroups/          - Groups of orthologous genes
+#   Orthogroups.tsv     - Tab-separated orthogroup membership
+#   Orthogroups_SingleCopyOrthologues.txt - 1:1:1 orthologs (for phylogenomics)
+# Comparative_Genomics_Statistics/
+#   Statistics_PerSpecies.tsv
+#   Statistics_Overall.tsv
+# Species_Tree/         - Inferred species tree
+# Gene_Trees/           - Individual gene trees
+# Orthogroup_Sequences/ - FASTA files per orthogroup
+
+echo "✅ OrthoFinder Complete!"
+echo "Key result: Orthogroups/Orthogroups.tsv"`
+                            }
+                        ]
+                    },
+                    children: []
+                }
+            ]
+        },
+
+        // ====================================================
+        // 7. STRUCTURAL BIOINFORMATICS
+        // ====================================================
+        {
+            id: "structural-bio",
+            label: "Structural Bioinformatics",
+            icon: "🏗️",
+            color: "cyan",
+            content: {
+                title: "🏗️ Structural Bioinformatics",
+                sections: [
+                    {
+                        type: "definition",
+                        title: "Overview",
+                        text: "Structural bioinformatics deals with the 3D structure of biological macromolecules (proteins, RNA, DNA). It encompasses structure prediction (AlphaFold, homology modeling), molecular docking, molecular dynamics, and structure-based drug design."
+                    },
+                    {
+                        type: "questions",
+                        title: "Biological Questions",
+                        items: [
+                            "What is the 3D structure of a protein?",
+                            "How does a drug/ligand bind to a protein?",
+                            "What structural changes occur upon mutation?",
+                            "What is the binding affinity of a protein-ligand complex?",
+                            "How does protein dynamics affect function?"
+                        ]
+                    },
+                    {
+                        type: "tools-table",
+                        title: "Key Tools",
+                        headers: ["Tool", "Purpose"],
+                        rows: [
+                            ["AlphaFold2 / ColabFold", "Protein structure prediction (AI-based)"],
+                            ["SWISS-MODEL", "Homology modeling (template-based)"],
+                            ["PyMOL / ChimeraX", "Structure visualization"],
+                            ["AutoDock Vina", "Molecular docking"],
+                            ["GROMACS", "Molecular dynamics simulations"],
+                            ["PDB (RCSB)", "Protein Data Bank — experimental structures"],
+                            ["I-TASSER", "Threading-based structure prediction"]
+                        ]
+                    }
+                ]
+            },
+            children: []
+        }
+    ]
+};
+
+
+// ============================================================
+// RENDERING ENGINE
+// ============================================================
+
+class BioinformaticsApp {
+    constructor() {
+        this.treeContainer = document.getElementById('treeContainer');
+        this.contentPanel = document.getElementById('contentPanel');
+        this.breadcrumb = document.getElementById('breadcrumb');
+        this.searchInput = document.getElementById('searchInput');
+        this.activeNodeId = null;
+        this.expandedNodes = new Set(['root']);
+        this.nodeMap = new Map();
+
+        this.buildNodeMap(KNOWLEDGE_BASE);
+        this.renderTree();
+        this.showContent('root');
+        this.setupSearch();
+    }
+
+    buildNodeMap(node, path = []) {
+        const currentPath = [...path, { id: node.id, label: node.label }];
+        this.nodeMap.set(node.id, { ...node, path: currentPath });
+        if (node.children) {
+            node.children.forEach(child => this.buildNodeMap(child, currentPath));
+        }
+    }
+
+    renderTree() {
+        this.treeContainer.innerHTML = '';
+        this.treeContainer.appendChild(this.createTreeNode(KNOWLEDGE_BASE, 0));
+    }
+
+    createTreeNode(node, depth) {
+        const container = document.createElement('div');
+        container.className = 'tree-node';
+        container.dataset.id = node.id;
+
+        const header = document.createElement('div');
+        header.className = 'tree-node-header';
+        if (node.color) header.dataset.color = node.color;
+        header.style.setProperty('--depth', depth);
+
+        const hasChildren = node.children && node.children.length > 0;
+        const isExpanded = this.expandedNodes.has(node.id);
+
+        const toggle = document.createElement('span');
+        toggle.className = `tree-toggle ${hasChildren ? (isExpanded ? 'expanded' : '') : 'leaf'}`;
+        toggle.textContent = '▶';
+
+        const icon = document.createElement('span');
+        icon.className = 'node-icon';
+        icon.textContent = node.icon || '📄';
+
+        const label = document.createElement('span');
+        label.className = 'node-label';
+        label.textContent = node.label;
+
+        if (hasChildren) {
+            const badge = document.createElement('span');
+            badge.className = 'node-badge';
+            badge.textContent = this.countAllChildren(node);
+            header.appendChild(toggle);
+            header.appendChild(icon);
+            header.appendChild(label);
+            header.appendChild(badge);
+        } else {
+            header.appendChild(toggle);
+            header.appendChild(icon);
+            header.appendChild(label);
+        }
+
+        header.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (hasChildren) {
+                if (this.expandedNodes.has(node.id)) {
+                    this.expandedNodes.delete(node.id);
+                } else {
+                    this.expandedNodes.add(node.id);
+                }
+                this.renderTree();
+            }
+            this.showContent(node.id);
+        });
+
+        container.appendChild(header);
+
+        if (hasChildren) {
+            const childContainer = document.createElement('div');
+            childContainer.className = `tree-node-children ${isExpanded ? 'expanded' : ''}`;
+            node.children.forEach(child => {
+                childContainer.appendChild(this.createTreeNode(child, depth + 1));
+            });
+            container.appendChild(childContainer);
+        }
+
+        if (this.activeNodeId === node.id) {
+            header.classList.add('active');
+        }
+
+        return container;
+    }
+
+    countAllChildren(node) {
+        if (!node.children) return 0;
+        let count = node.children.length;
+        node.children.forEach(c => count += this.countAllChildren(c));
+        return count;
+    }
+
+    showContent(nodeId) {
+        this.activeNodeId = nodeId;
+        const nodeData = this.nodeMap.get(nodeId);
+        if (!nodeData || !nodeData.content) return;
+
+        this.updateBreadcrumb(nodeData.path);
+        this.renderContent(nodeData);
+        this.renderTree(); // re-render to update active state
+    }
+
+    updateBreadcrumb(path) {
+        this.breadcrumb.innerHTML = '';
+        path.forEach((item, idx) => {
+            if (idx > 0) {
+                const sep = document.createElement('span');
+                sep.className = 'breadcrumb-separator';
+                sep.textContent = '›';
+                this.breadcrumb.appendChild(sep);
+            }
+            if (idx < path.length - 1) {
+                const link = document.createElement('span');
+                link.className = 'breadcrumb-item';
+                link.textContent = item.label;
+                link.addEventListener('click', () => this.showContent(item.id));
+                this.breadcrumb.appendChild(link);
+            } else {
+                const current = document.createElement('span');
+                current.className = 'breadcrumb-current';
+                current.textContent = item.label;
+                this.breadcrumb.appendChild(current);
+            }
+        });
+    }
+
+    renderContent(nodeData) {
+        const content = nodeData.content;
+        let html = '';
+
+        // Title
+        html += `<div class="content-card"><h2>${content.title}</h2>`;
+
+        // If landing page (root)
+        if (content.type === 'landing') {
+            content.sections.forEach(s => {
+                html += this.renderSection(s);
+            });
+
+            // Landing cards for children
+            if (nodeData.children && nodeData.children.length > 0) {
+                html += '<div class="landing-grid">';
+                nodeData.children.forEach(child => {
+                    const childColor = child.color || 'blue';
+                    const childCount = this.countAllChildren(child);
+                    html += `
+                        <div class="landing-card ${childColor}" onclick="app.expandAndShow('${child.id}')">
+                            <div class="card-icon">${child.icon}</div>
+                            <div class="card-title">${child.label}</div>
+                            <div class="card-desc">${child.content?.sections?.[0]?.text?.substring(0, 150) || ''}...</div>
+                            <div class="card-count">${childCount} subtopics</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            html += '</div>';
+        } else {
+            // Regular content
+            content.sections.forEach(s => {
+                html += this.renderSection(s);
+            });
+            html += '</div>';
+        }
+
+        // Show children as cards at bottom
+        if (nodeData.children && nodeData.children.length > 0 && content.type !== 'landing') {
+            html += `<div class="content-card"><h3>📂 Subtopics</h3><div class="landing-grid">`;
+            nodeData.children.forEach(child => {
+                html += `
+                    <div class="landing-card ${child.color || 'blue'}" onclick="app.expandAndShow('${child.id}')">
+                        <div class="card-icon">${child.icon}</div>
+                        <div class="card-title">${child.label}</div>
+                    </div>
+                `;
+            });
+            html += '</div></div>';
+        }
+
+        this.contentPanel.innerHTML = html;
+        this.contentPanel.scrollTop = 0;
+    }
+
+    renderSection(section) {
+        let html = '';
+        switch (section.type) {
+            case 'definition':
+                html += `<div class="info-box definition">
+                    <div class="info-title">📘 ${section.title}</div>
+                    <p>${section.text}</p>
+                </div>`;
+                break;
+
+            case 'paragraph':
+                html += `<p>${section.text}</p>`;
+                break;
+
+            case 'questions':
+                html += `<div class="info-box question">
+                    <div class="info-title">❓ ${section.title}</div>
+                    <ul>${section.items.map(i => `<li>${i}</li>`).join('')}</ul>
+                </div>`;
+                break;
+
+            case 'tags':
+                html += `<h3>🏷️ Tools, Algorithms, Formats & Databases</h3><div class="tags">`;
+                section.items.forEach(tag => {
+                    html += `<span class="tag ${tag.class}">${tag.label}</span>`;
+                });
+                html += '</div>';
+                break;
+
+            case 'tools-table':
+                html += `<h3>🛠️ ${section.title}</h3>`;
+                html += '<table class="comparison-table"><thead><tr>';
+                section.headers.forEach(h => html += `<th>${h}</th>`);
+                html += '</tr></thead><tbody>';
+                section.rows.forEach(row => {
+                    html += '<tr>';
+                    row.forEach(cell => html += `<td>${cell}</td>`);
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                break;
+
+            case 'pipeline':
+                html += `<h3>⚡ Analysis Pipeline</h3><div class="pipeline">`;
+                section.steps.forEach((step, idx) => {
+                    if (idx > 0) html += '<span class="pipeline-arrow">→</span>';
+                    html += `<div class="pipeline-step">
+                        <div class="step-name">${step.name}</div>
+                        <div class="step-tool">${step.tool}</div>
+                    </div>`;
+                });
+                html += '</div>';
+                break;
+
+            case 'code':
+                const codeId = 'code-' + Math.random().toString(36).substr(2, 9);
+                html += `<h3>💻 ${section.title || 'Code'}</h3>`;
+                html += `<div class="code-block" id="${codeId}">
+                    <span class="code-lang">${section.lang}</span>
+                    <button class="copy-btn" onclick="app.copyCode('${codeId}')">Copy</button>
+                    <pre>${this.escapeHtml(section.code)}</pre>
+                </div>`;
+                break;
+
+            case 'math':
+                html += `<div class="info-box math">
+                    <div class="info-title">📐 ${section.title}</div>`;
+                section.formulas.forEach(f => {
+                    html += `<h4>${f.name}</h4><p>${f.desc}</p>`;
+                    if (f.formula) {
+                        html += `<div class="formula">${f.formula}</div>`;
+                    }
+                });
+                html += '</div>';
+                break;
+
+            case 'interpretation':
+                html += `<div class="interpretation">
+                    <h4>🔍 ${section.title}</h4>
+                    <ul>${section.items.map(i => `<li>${i}</li>`).join('')}</ul>
+                </div>`;
+                break;
+        }
+        return html;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    copyCode(blockId) {
+        const block = document.getElementById(blockId);
+        const code = block.querySelector('pre').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+            const btn = block.querySelector('.copy-btn');
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 2000);
+        });
+    }
+
+    expandAndShow(nodeId) {
+        // Expand all ancestors
+        const nodeData = this.nodeMap.get(nodeId);
+        if (nodeData && nodeData.path) {
+            nodeData.path.forEach(p => this.expandedNodes.add(p.id));
+        }
+        this.showContent(nodeId);
+    }
+
+    setupSearch() {
+        this.searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (query.length < 2) {
+                this.renderTree();
+                return;
+            }
+            this.searchAndHighlight(query);
+        });
+    }
+
+    searchAndHighlight(query) {
+        const results = [];
+        this.nodeMap.forEach((node, id) => {
+            const searchableText = [
+                node.label,
+                ...(node.content?.sections || []).map(s => {
+                    return [s.text, s.title, ...(s.items || []),
+                            ...(s.rows || []).flat(),
+                            ...(s.formulas || []).map(f => f.name + ' ' + f.desc),
+                            s.code || ''].join(' ');
+                })
+            ].join(' ').toLowerCase();
+
+            if (searchableText.includes(query)) {
+                results.push(node);
+            }
+        });
+
+        // Show results in content panel
+        let html = `<div class="content-card"><h2>🔍 Search Results for "${query}"</h2>`;
+        html += `<p class="text-muted">${results.length} results found</p>`;
+        html += '<div class="landing-grid">';
+        results.forEach(node => {
+            html += `
+                <div class="landing-card ${node.color || 'blue'}" onclick="app.expandAndShow('${node.id}')">
+                    <div class="card-icon">${node.icon}</div>
+                    <div class="card-title">${node.label}</div>
+                    <div class="card-desc">${node.path?.map(p => p.label).join(' › ')}</div>
+                </div>
+            `;
+        });
+        html += '</div></div>';
+        this.contentPanel.innerHTML = html;
+    }
+}
+
+// Initialize the app
+const app = new BioinformaticsApp();
+</script>
+
+</body>
+</html>
