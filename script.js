@@ -1,4828 +1,2007 @@
-/* ================================================================
-   BIOINFORMATICS KNOWLEDGE ARCHIVE
-   Interactive Knowledge Base & Reproducible Workflow Guide
-   Created by Bhuwan Sharma | © 2026
+// ================================================================
+//  BIOINFORMATICS KNOWLEDGE ARCHIVE — Complete Script
+//  Created by Bhuwan Sharma | © 2026
+//  Single self-contained file — no external dependencies
+// ================================================================
 
-   script.js — Concatenate Parts 1–5 into this single file.
-   ================================================================ */
-;(function () {
-'use strict';
+(function () {
+  "use strict";
 
-/* ================================================================
-   §1  STATE
-   ================================================================ */
-const state = {
-    activeNodeId: null,
-    expandedNodes: new Set(['root']),
-    theme: localStorage.getItem('bioinfo-theme') || 'dark',
-    sidebarWidth: parseInt(localStorage.getItem('bioinfo-sidebar') || '360', 10),
-    breadcrumb: [{ id: 'root', label: '🏠 Home' }],
-    nodeIndex: []                // flat list for search
-};
+  // ==============================================================
+  //  SECTION 1: KNOWLEDGE DATA — The entire bioinformatics tree
+  // ==============================================================
 
-/* ================================================================
-   §2  TINY DOM HELPERS
-   ================================================================ */
-const $ = (s, p) => (p || document).querySelector(s);
-const $$ = (s, p) => [...(p || document).querySelectorAll(s)];
-
-function escapeHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}
-
-function debounce(fn, ms) {
-    let t;
-    return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
-}
-
-/* exposed to inline onclick */
-window.copyCode = function (btn) {
-    const txt = btn.closest('.code-block').querySelector('pre').textContent;
-    navigator.clipboard.writeText(txt).then(() => {
-        btn.classList.add('copied');
-        btn.textContent = '✅ Copied!';
-        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋 Copy'; }, 2000);
-    });
-};
-
-window.toggleError = function (hdr) {
-    hdr.nextElementSibling.classList.toggle('open');
-    hdr.querySelector('.error-toggle').classList.toggle('open');
-};
-
-window.navigateTo = function (id) { activateNode(id); };
-
-/* ================================================================
-   §3  HTML BUILDER HELPERS
-   ================================================================ */
-function codeBlock(lang, code, file) {
-    const fl = file ? ` — ${file}` : '';
-    return `<div class="code-block">
-<div class="code-block-header"><span class="code-block-lang">${lang}${fl}</span>
-<button class="code-block-copy" onclick="copyCode(this)">📋 Copy</button></div>
-<pre>${escapeHtml(code.trim())}</pre></div>`;
-}
-
-function infoBox(type, title, html) {
-    return `<div class="info-box ${type}"><div class="info-title">${title}</div>${html}</div>`;
-}
-
-function pipelineHTML(steps) {
-    return `<div class="pipeline">${steps.map((s, i) =>
-        `${i ? '<span class="pipeline-arrow">→</span>' : ''}<div class="pipeline-step">
-<div class="step-num">Step ${i + 1}</div><div class="step-name">${s.name}</div>
-${s.tool ? `<div class="step-tool">${s.tool}</div>` : ''}</div>`).join('')}</div>`;
-}
-
-function tableHTML(hdr, rows) {
-    return `<div class="table-wrapper"><table class="comparison-table">
-<thead><tr>${hdr.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>
-</table></div>`;
-}
-
-function tagsHTML(tags) {
-    return `<div class="tags">${tags.map(t =>
-        `<span class="tag tag-${t.type}">${t.label}</span>`).join('')}</div>`;
-}
-
-function errorBlock(msg, sol) {
-    return `<div class="error-item"><div class="error-header" onclick="toggleError(this)">
-<span class="error-icon">❌</span><span class="error-text">${escapeHtml(msg)}</span>
-<span class="error-toggle">▶</span></div>
-<div class="error-solution"><div class="solution-label">✅ Solution</div>${sol}</div></div>`;
-}
-
-function formulaHTML(f) { return `<div class="formula">${f}</div>`; }
-
-function interpretBox(html) {
-    return `<div class="interpretation"><h4>📊 How to Interpret</h4>${html}</div>`;
-}
-
-function sectionCard(html) { return `<div class="content-card">${html}</div>`; }
-
-/* ================================================================
-   §4  KNOWLEDGE TREE STRUCTURE  (complete – all nodes)
-   ================================================================ */
-const TREE_DATA = {
-    id: 'root', label: 'Bioinformatics', icon: '🧬',
+  const KNOWLEDGE_TREE = {
+    id: "root",
+    label: "Bioinformatics",
+    icon: "🧬",
+    color: "blue",
+    content: {
+      title: "🧬 Bioinformatics Knowledge Archive",
+      what: "Bioinformatics is an interdisciplinary field that combines biology, computer science, mathematics, and statistics to analyze and interpret biological data. It involves the development and application of computational tools and methods to understand biological processes at the molecular level.",
+      questions: [
+        "How do we store, retrieve, and analyze biological sequences?",
+        "What genes are expressed under specific conditions?",
+        "How are organisms evolutionarily related?",
+        "What is the 3D structure of a protein and how does it function?",
+        "How do microbial communities differ across environments?",
+        "What genomic variants are associated with diseases?",
+        "How do we assemble and annotate genomes from raw sequencing data?",
+        "What metabolic pathways are active in a given organism?"
+      ],
+      overview: "This archive provides a comprehensive, interactive decision tree covering every major sub-field of bioinformatics. Each node contains definitions, biological questions answered, tools, algorithms, mathematical foundations, step-by-step reproducible workflows, common errors and troubleshooting, and interpretation guides."
+    },
     children: [
-        /* ---- Sequence Analysis ---- */
-        { id: 'sequence-analysis', label: 'Sequence Analysis', icon: '🔤', colorClass: 'sequence', children: [
-            { id: 'pairwise-alignment', label: 'Pairwise Alignment', icon: '↔️' },
-            { id: 'msa', label: 'Multiple Sequence Alignment', icon: '📊' },
-            { id: 'blast-search', label: 'BLAST & Sequence Search', icon: '💥' },
-            { id: 'sequence-databases', label: 'Sequence Databases', icon: '🗄️' },
-            { id: 'file-formats', label: 'File Formats & Data Types', icon: '📄' }
-        ]},
-        /* ---- Genomics ---- */
-        { id: 'genomics', label: 'Genomics', icon: '🧬', colorClass: 'genomics', children: [
-            { id: 'ngs-preprocessing', label: 'NGS Data Preprocessing', icon: '⚙️', children: [
-                { id: 'quality-control', label: 'Quality Control (FastQC)', icon: '✅' },
-                { id: 'read-trimming', label: 'Read Trimming & Filtering', icon: '✂️' },
-                { id: 'read-mapping', label: 'Read Mapping / Alignment', icon: '🎯' }
-            ]},
-            { id: 'genome-assembly', label: 'Genome Assembly', icon: '🔧', children: [
-                { id: 'denovo-assembly', label: 'De Novo Assembly', icon: '🆕' },
-                { id: 'reference-assembly', label: 'Reference-Guided Assembly', icon: '📌' }
-            ]},
-            { id: 'gene-prediction', label: 'Gene Prediction & Annotation', icon: '🏷️' },
-            { id: 'variant-calling', label: 'Variant Calling', icon: '🔬', children: [
-                { id: 'snp-indel', label: 'SNP & Indel Calling', icon: '📍' },
-                { id: 'structural-variants', label: 'Structural Variant Detection', icon: '🔀' },
-                { id: 'variant-annotation', label: 'Variant Annotation & Effect', icon: '📝' }
-            ]},
-            { id: 'gwas', label: 'Genome-Wide Association Studies', icon: '📈' }
-        ]},
-        /* ---- Transcriptomics ---- */
-        { id: 'transcriptomics', label: 'Transcriptomics', icon: '📝', colorClass: 'transcriptomics', children: [
-            { id: 'rnaseq-pipeline', label: 'RNA-Seq Analysis Pipeline', icon: '🔬', children: [
-                { id: 'rnaseq-design', label: 'Experimental Design', icon: '📐' },
-                { id: 'rnaseq-qc', label: 'Quality Control', icon: '✅' },
-                { id: 'rnaseq-trimming', label: 'Read Trimming (Trimmomatic)', icon: '✂️' },
-                { id: 'rnaseq-alignment', label: 'Alignment (HISAT2 / STAR)', icon: '🎯' },
-                { id: 'rnaseq-quantification', label: 'Quantification (featureCounts)', icon: '🔢' },
-                { id: 'differential-expression', label: 'Differential Expression', icon: '📊', children: [
-                    { id: 'deseq2', label: 'DESeq2', icon: '📦' },
-                    { id: 'edger', label: 'edgeR', icon: '📦' },
-                    { id: 'limma-voom', label: 'limma-voom', icon: '📦' },
-                    { id: 'geo2r', label: 'GEO2R', icon: '🌐' },
-                    { id: 'degear', label: 'DEGEAR', icon: '🛠️' }
-                ]},
-                { id: 'functional-analysis', label: 'Functional Enrichment', icon: '🎯', children: [
-                    { id: 'go-enrichment', label: 'GO Enrichment (clusterProfiler)', icon: '🏷️' },
-                    { id: 'kegg-pathway', label: 'KEGG Pathway Analysis', icon: '🗺️' },
-                    { id: 'gsea-analysis', label: 'Gene Set Enrichment (GSEA)', icon: '📈' }
-                ]}
-            ]},
-            { id: 'transcriptome-assembly', label: 'Transcriptome Assembly', icon: '🔧' },
-            { id: 'scrna-seq', label: 'Single-cell RNA-seq', icon: '🔬' },
-            { id: 'long-read-rna', label: 'Long-read Transcriptomics', icon: '📏' }
-        ]},
-        /* ---- Phylogenetics ---- */
-        { id: 'phylogenetics', label: 'Phylogenetics & Phylogenomics', icon: '🌳', colorClass: 'phylogenetics', children: [
-            { id: 'tree-construction', label: 'Tree Construction Methods', icon: '🌲', children: [
-                { id: 'distance-methods', label: 'Distance Methods (NJ / UPGMA)', icon: '📏' },
-                { id: 'maximum-parsimony', label: 'Maximum Parsimony', icon: '✂️' },
-                { id: 'maximum-likelihood', label: 'Maximum Likelihood (RAxML / IQ-TREE)', icon: '📊' },
-                { id: 'bayesian-inference', label: 'Bayesian Inference (MrBayes / BEAST)', icon: '🎲' }
-            ]},
-            { id: 'substitution-models', label: 'Substitution Models', icon: '🔄' },
-            { id: 'mega-phylogeny', label: 'Phylogenetics with MEGA', icon: '🖥️' },
-            { id: 'ape-phylogeny', label: 'Phylogenetics with R (ape)', icon: '📦' },
-            { id: 'molecular-dating', label: 'Molecular Dating', icon: '⏰' },
-            { id: 'hgt-detection', label: 'Horizontal Gene Transfer', icon: '↗️' },
-            { id: 'phylogenomics-analysis', label: 'Phylogenomics', icon: '🧬' }
-        ]},
-        /* ---- Metagenomics ---- */
-        { id: 'metagenomics', label: 'Metagenomics & Microbial Analysis', icon: '🦠', colorClass: 'metagenomics', children: [
-            { id: 'amplicon-analysis', label: '16S / ITS Amplicon Analysis', icon: '🔬', children: [
-                { id: 'qiime2-pipeline', label: 'QIIME 2 Pipeline', icon: '🔧' },
-                { id: 'mothur-pipeline', label: 'mothur Pipeline', icon: '🔧' }
-            ]},
-            { id: 'shotgun-metagenomics', label: 'Shotgun Metagenomics', icon: '💣', children: [
-                { id: 'taxonomic-profiling', label: 'Taxonomic Profiling (Kraken2 / MetaPhlAn)', icon: '📊' },
-                { id: 'functional-profiling', label: 'Functional Profiling (HUMAnN)', icon: '⚙️' }
-            ]},
-            { id: 'mag-recovery', label: 'Metagenome-Assembled Genomes (MAGs)', icon: '📦' },
-            { id: 'diversity-analysis', label: 'Diversity Analysis (α / β)', icon: '🌈' }
-        ]},
-        /* ---- Structural Bioinformatics ---- */
-        { id: 'structural-bioinformatics', label: 'Structural Bioinformatics', icon: '🏗️', colorClass: 'structural', children: [
-            { id: 'structure-prediction', label: 'Protein Structure Prediction', icon: '🔮', children: [
-                { id: 'alphafold', label: 'AlphaFold 2', icon: '🤖' },
-                { id: 'homology-modeling', label: 'Homology Modeling (SWISS-MODEL)', icon: '📐' },
-                { id: 'ab-initio', label: 'Ab Initio / Threading', icon: '🆕' }
-            ]},
-            { id: 'structure-visualization', label: 'Visualization (PyMOL / ChimeraX)', icon: '👁️' },
-            { id: 'molecular-docking', label: 'Molecular Docking', icon: '🔗', children: [
-                { id: 'autodock-vina', label: 'AutoDock Vina', icon: '🔧' },
-                { id: 'haddock', label: 'HADDOCK', icon: '🔧' }
-            ]},
-            { id: 'molecular-dynamics', label: 'Molecular Dynamics (GROMACS)', icon: '💫' },
-            { id: 'structure-validation', label: 'Structure Validation', icon: '✅' }
-        ]},
-        /* ---- Comparative Genomics ---- */
-        { id: 'comparative-genomics', label: 'Comparative Genomics', icon: '🔄', colorClass: 'comparative', children: [
-            { id: 'ortholog-detection', label: 'Ortholog & Paralog Detection', icon: '👥' },
-            { id: 'synteny-analysis', label: 'Synteny Analysis', icon: '📊' },
-            { id: 'whole-genome-alignment', label: 'Whole Genome Alignment', icon: '🔗' },
-            { id: 'genome-browsers', label: 'Genome Browsers (IGV / NCBI)', icon: '🖥️' }
-        ]},
-        /* ---- Functional Genomics ---- */
-        { id: 'functional-genomics', label: 'Functional Genomics', icon: '⚡', colorClass: 'functional', children: [
-            { id: 'gene-ontology', label: 'Gene Ontology', icon: '🏷️' },
-            { id: 'pathway-analysis-main', label: 'Pathway Analysis (KEGG / Reactome)', icon: '🗺️' },
-            { id: 'chipseq', label: 'ChIP-seq Analysis', icon: '🧪' },
-            { id: 'epigenomics', label: 'Epigenomics & DNA Methylation', icon: '🔬' }
-        ]},
-        /* ---- Systems Biology ---- */
-        { id: 'systems-biology', label: 'Systems Biology', icon: '🕸️', colorClass: 'systems', children: [
-            { id: 'network-analysis', label: 'Network Analysis (Cytoscape)', icon: '🕸️' },
-            { id: 'metabolic-modeling', label: 'Metabolic Modeling (FBA)', icon: '⚗️' },
-            { id: 'multi-omics', label: 'Multi-omics Integration', icon: '🔄' }
-        ]}
-    ]
-};
-
-/* ================================================================
-   §5  CONTENT DATABASE  (keyed by node id)
-   ================================================================ */
-const CONTENT = {};
-
-/* helper: count children recursively */
-function countLeaves(node) {
-    if (!node.children || !node.children.length) return 1;
-    return node.children.reduce((s, c) => s + countLeaves(c), 0);
-}
-
-/* ---------- ROOT ---------- */
-CONTENT['root'] = () => sectionCard(`
-<h2>🧬 Bioinformatics Knowledge Archive</h2>
-${infoBox('definition', '📖 What is Bioinformatics?',
-`<p>Bioinformatics is an interdisciplinary field combining <strong>biology</strong>, <strong>computer science</strong>,
-<strong>mathematics</strong>, and <strong>statistics</strong> to analyze and interpret biological data.
-It develops methods and software tools for understanding complex biological processes — from gene regulation
-and protein folding to evolutionary history and microbial ecology.</p>
-<p>This archive serves as a <strong>comprehensive, reproducible reference</strong> for students, researchers,
-and practitioners in the field.</p>`)}
-
-<h3>🎯 What This Archive Provides</h3>
-<ul>
-<li><strong>Interactive decision trees</strong> — Hierarchical navigation of every sub-field</li>
-<li><strong>Step-by-step workflows</strong> — Reproducible pipelines with exact Linux / R / Python commands</li>
-<li><strong>Tool documentation</strong> — Installation, parameters, and best practices</li>
-<li><strong>Mathematical foundations</strong> — Algorithms, models, and statistical tests explained</li>
-<li><strong>Interpretation guides</strong> — How to read outputs and report results</li>
-<li><strong>Troubleshooting</strong> — Common errors and their fixes</li>
-</ul>
-
-<h3>🗂️ Explore the Major Sub-fields</h3>
-<div class="landing-grid">
-${[
-    ['sequence-analysis','🔤','Sequence Analysis','Pairwise & multiple alignment, BLAST, databases, file formats','sequence'],
-    ['genomics','🧬','Genomics','NGS preprocessing, assembly, variant calling, annotation, GWAS','genomics'],
-    ['transcriptomics','📝','Transcriptomics','RNA-Seq pipeline, DE analysis (DESeq2/edgeR/limma), GO enrichment','transcriptomics'],
-    ['phylogenetics','🌳','Phylogenetics & Phylogenomics','Tree construction, substitution models, MEGA, RAxML, molecular dating, HGT','phylogenetics'],
-    ['metagenomics','🦠','Metagenomics & Microbial','16S/ITS amplicon (QIIME 2, mothur), shotgun, MAGs, diversity','metagenomics'],
-    ['structural-bioinformatics','🏗️','Structural Bioinformatics','AlphaFold, homology modeling, docking, MD simulations, validation','structural'],
-    ['comparative-genomics','🔄','Comparative Genomics','Orthologs, synteny, whole-genome alignment, genome browsers','comparative'],
-    ['functional-genomics','⚡','Functional Genomics','Gene Ontology, pathways, ChIP-seq, epigenomics','functional'],
-    ['systems-biology','🕸️','Systems Biology','Network analysis, metabolic modeling, multi-omics integration','systems']
-].map(([id,icon,title,desc,cls]) => `
-<div class="landing-card ${cls}" onclick="navigateTo('${id}')">
-    <div class="card-icon">${icon}</div>
-    <div class="card-title">${title}</div>
-    <div class="card-desc">${desc}</div>
-</div>`).join('')}
-</div>
-
-${infoBox('tip', '💡 How to use this archive',
-`<p>Use the <strong>sidebar tree</strong> on the left to navigate topics hierarchically.
-Click any node to view its detailed content, including definitions, tools, step-by-step commands,
-and troubleshooting guides. Use <kbd>Ctrl+K</kbd> to search across all topics.</p>`)}
-`);
-
-/* =================================================================
-   SEQUENCE ANALYSIS — Parent
-   ================================================================= */
-CONTENT['sequence-analysis'] = () => sectionCard(`
-<h2>🔤 Sequence Analysis</h2>
-${infoBox('definition', '📖 Definition',
-`<p>Sequence analysis is the foundation of bioinformatics. It encompasses all computational methods used to
-analyze <strong>DNA</strong>, <strong>RNA</strong>, and <strong>protein sequences</strong> — including alignment,
-searching, motif discovery, and database retrieval. Almost every bioinformatics workflow begins with some form
-of sequence analysis.</p>`)}
-
-${infoBox('question', '❓ Biological Questions Answered',
-`<ul>
-<li>How similar are two or more sequences? (Alignment)</li>
-<li>What is the function of an unknown gene/protein? (Homology search)</li>
-<li>Which regions are conserved across species? (Conservation analysis)</li>
-<li>Does a sequence contain known functional motifs or domains? (Motif finding)</li>
-<li>What organism does a sequence come from? (Taxonomic classification)</li>
-</ul>`)}
-
-<h3>🔑 Key Concepts</h3>
-${infoBox('warning', '⚠️ Similarity ≠ Homology',
-`<p><strong>Similarity</strong> is a quantitative measure (% identity). <strong>Homology</strong> is a qualitative
-statement about shared evolutionary origin — sequences either are or are not homologous. High similarity
-<em>suggests</em> homology, but similar sequences can arise by convergence.</p>`)}
-
-<h3>📂 Sub-topics</h3>
-<div class="landing-grid">
-${[
-    ['pairwise-alignment','↔️','Pairwise Alignment','Needleman-Wunsch, Smith-Waterman, scoring matrices, gap penalties'],
-    ['msa','📊','Multiple Sequence Alignment','ClustalW, MUSCLE, MAFFT, T-Coffee — aligning 3+ sequences'],
-    ['blast-search','💥','BLAST & Sequence Search','blastn/p/x, E-value, makeblastdb, DIAMOND'],
-    ['sequence-databases','🗄️','Sequence Databases','NCBI, UniProt, EMBL-EBI, SRA toolkit, data download'],
-    ['file-formats','📄','File Formats','FASTA, FASTQ, SAM/BAM, VCF, GFF/GTF, BED and conversions']
-].map(([id,i,t,d])=>`<div class="landing-card sequence" onclick="navigateTo('${id}')">
-<div class="card-icon">${i}</div><div class="card-title">${t}</div>
-<div class="card-desc">${d}</div></div>`).join('')}
-</div>
-`) ;
-
-/* =================================================================
-   PAIRWISE ALIGNMENT
-   ================================================================= */
-CONTENT['pairwise-alignment'] = () => sectionCard(`
-<h2>↔️ Pairwise Sequence Alignment</h2>
-${tagsHTML([
-    {type:'algo',label:'Needleman-Wunsch'},{type:'algo',label:'Smith-Waterman'},
-    {type:'tool',label:'EMBOSS needle'},{type:'tool',label:'EMBOSS water'},
-    {type:'tool',label:'BLAST'},{type:'db',label:'BLOSUM62'},{type:'db',label:'PAM250'}
-])}
-
-${infoBox('definition','📖 What is Pairwise Alignment?',
-`<p>Pairwise alignment compares <strong>two</strong> biological sequences to identify regions of similarity.
-There are two flavors:</p>
-<ul>
-<li><strong>Global alignment</strong> — aligns sequences end-to-end (Needleman-Wunsch, 1970)</li>
-<li><strong>Local alignment</strong> — finds the best matching sub-region (Smith-Waterman, 1981)</li>
-</ul>
-<p>Both use <strong>dynamic programming</strong> to guarantee an optimal alignment given a scoring scheme.</p>`)}
-
-${infoBox('question','❓ When to Use Which?',
-`<ul>
-<li><strong>Global</strong> — comparing two proteins of similar length that are suspected full-length homologs</li>
-<li><strong>Local</strong> — searching for a conserved domain within a larger sequence, or when sequences differ in length</li>
-</ul>`)}
-
-<h3>🧮 Mathematical Foundation</h3>
-<h4>Needleman-Wunsch (Global) Recurrence</h4>
-${formulaHTML('F(i, j) = max { F(i−1, j−1) + s(x<sub>i</sub>, y<sub>j</sub>),&ensp; F(i−1, j) + d,&ensp; F(i, j−1) + d }')}
-<p>where <em>s(x<sub>i</sub>, y<sub>j</sub>)</em> is the substitution score and <em>d</em> is the gap penalty (negative).</p>
-
-<h4>Smith-Waterman (Local) Recurrence</h4>
-${formulaHTML('H(i, j) = max { 0,&ensp; H(i−1, j−1) + s(x<sub>i</sub>, y<sub>j</sub>),&ensp; H(i−1, j) + d,&ensp; H(i, j−1) + d }')}
-<p>The key difference is the <strong>zero</strong> — the score can never go negative, allowing alignments to start and end anywhere.</p>
-
-<h4>Affine Gap Penalty</h4>
-${formulaHTML('Gap cost = G<sub>open</sub> + (n − 1) × G<sub>extend</sub>')}
-<p>Opening a gap is penalized more heavily than extending an existing gap. Typical values: G<sub>open</sub> = −10, G<sub>extend</sub> = −0.5.</p>
-
-<h3>📊 Scoring Matrices</h3>
-${tableHTML(
-    ['Matrix','Type','Best For','Description'],
-    [
-        ['BLOSUM62','Protein','General protein comparison','Derived from conserved blocks; ~62% identity threshold. <strong>Most commonly used.</strong>'],
-        ['BLOSUM80','Protein','Closely related proteins','Higher identity threshold — more stringent'],
-        ['BLOSUM45','Protein','Divergent proteins','Lower identity threshold — more permissive'],
-        ['PAM250','Protein','Distant homologs','Based on accepted point mutations over long evolution'],
-        ['PAM120','Protein','Moderate divergence','Intermediate evolutionary distance'],
-        ['DNA identity','DNA','Nucleotide comparison','Match = +1, Mismatch = −3 (BLAST default for blastn)']
-    ]
-)}
-
-<h3>🔧 Step-by-Step: EMBOSS Pairwise Alignment</h3>
-<h4>Installation</h4>
-${codeBlock('bash',`
-# Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install emboss
-
-# Conda (recommended)
-conda install -c bioconda emboss
-
-# Verify
-needle -version
-water -version
-`)}
-
-<h4>Global Alignment (needle)</h4>
-${codeBlock('bash',`
-# Download two protein sequences from UniProt
-wget -O human_insulin.fa "https://rest.uniprot.org/uniprotkb/P01308.fasta"
-wget -O mouse_insulin.fa "https://rest.uniprot.org/uniprotkb/P01326.fasta"
-
-# Run global alignment
-needle \\
-  -asequence human_insulin.fa \\
-  -bsequence mouse_insulin.fa \\
-  -gapopen 10.0 \\
-  -gapextend 0.5 \\
-  -outfile insulin_global.txt
-
-# View result
-cat insulin_global.txt
-`)}
-
-<h4>Local Alignment (water)</h4>
-${codeBlock('bash',`
-# Run local alignment
-water \\
-  -asequence human_insulin.fa \\
-  -bsequence mouse_insulin.fa \\
-  -gapopen 10.0 \\
-  -gapextend 0.5 \\
-  -outfile insulin_local.txt
-
-cat insulin_local.txt
-`)}
-
-${interpretBox(`
-<ul>
-<li><strong>Identity %</strong> — Fraction of positions with identical residues. >30% for proteins strongly suggests homology.</li>
-<li><strong>Similarity %</strong> — Includes conservative substitutions (e.g., I↔L). Always ≥ identity.</li>
-<li><strong>Score</strong> — Sum of substitution scores minus gap penalties. Higher = better alignment.</li>
-<li><strong>Gaps</strong> — Insertions/deletions. Too many gaps may indicate poor alignment or non-homologous sequences.</li>
-<li>For <strong>proteins</strong>: >25% identity over >100 residues → likely homologous ("twilight zone" is 20-35%).</li>
-<li>For <strong>DNA</strong>: >70% identity is generally considered significant for coding regions.</li>
-</ul>`)}
-
-<h3>⚠️ Common Errors & Troubleshooting</h3>
-${errorBlock('Error: Unable to read sequence',
-`<p>Ensure your FASTA file starts with <code>&gt;</code> and contains valid sequence characters.</p>
-${codeBlock('bash',`# Check file format
-head -5 human_insulin.fa
-# Should show:
-# >sp|P01308|INS_HUMAN Insulin OS=Homo sapiens ...
-# MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEA...`)}`)}
-
-${errorBlock('Error: Sequences are too long — runs out of memory',
-`<p>Needleman-Wunsch/Smith-Waterman require O(n×m) memory. For very long sequences, use heuristic methods like BLAST instead.</p>
-${codeBlock('bash',`# For long sequences, use BLAST instead of exact DP
-blastp -query seq1.fa -subject seq2.fa -outfmt 6`)}`)}
-`) + sectionCard(`
-<h2>↔️ Pairwise Alignment in R</h2>
-${codeBlock('r',`
-# Using Biostrings package (Bioconductor)
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install("Biostrings")
-
-library(Biostrings)
-
-# Define sequences
-seq1 <- AAString("PLEASANTLY")
-seq2 <- AAString("MEANLY")
-
-# Global alignment (Needleman-Wunsch)
-global_aln <- pairwiseAlignment(seq1, seq2, type = "global",
-                                 substitutionMatrix = "BLOSUM62",
-                                 gapOpening = 10, gapExtension = 0.5)
-print(global_aln)
-score(global_aln)
-pid(global_aln)  # percent identity
-
-# Local alignment (Smith-Waterman)
-local_aln <- pairwiseAlignment(seq1, seq2, type = "local",
-                                substitutionMatrix = "BLOSUM62",
-                                gapOpening = 10, gapExtension = 0.5)
-print(local_aln)
-
-# DNA alignment
-dna1 <- DNAString("ATCGATCGATCG")
-dna2 <- DNAString("ATCAATCAATCG")
-dna_aln <- pairwiseAlignment(dna1, dna2, type = "global")
-print(dna_aln)
-`)}
-`);
-
-/* =================================================================
-   MULTIPLE SEQUENCE ALIGNMENT
-   ================================================================= */
-CONTENT['msa'] = () => sectionCard(`
-<h2>📊 Multiple Sequence Alignment (MSA)</h2>
-${tagsHTML([
-    {type:'tool',label:'MAFFT'},{type:'tool',label:'MUSCLE'},{type:'tool',label:'Clustal Omega'},
-    {type:'tool',label:'T-Coffee'},{type:'tool',label:'trimAl'},{type:'tool',label:'Jalview'},
-    {type:'algo',label:'Progressive'},{type:'algo',label:'Iterative'}
-])}
-
-${infoBox('definition','📖 What is MSA?',
-`<p>Multiple Sequence Alignment simultaneously aligns <strong>three or more</strong> sequences to reveal conserved
-regions, identify functional domains, and prepare data for phylogenetic analysis. It is a prerequisite for many
-downstream analyses including phylogenetics, conservation scoring, and protein structure prediction.</p>`)}
-
-${infoBox('question','❓ Biological Questions',
-`<ul>
-<li>Which residues are conserved across a protein family?</li>
-<li>Where are the variable / hypervariable regions? (e.g., antibody CDRs)</li>
-<li>What is the evolutionary relationship among sequences? (input to phylogeny)</li>
-<li>Can we identify functional motifs or domains?</li>
-</ul>`)}
-
-<h3>🧮 Algorithmic Approaches</h3>
-${tableHTML(
-    ['Approach','Method','Algorithm','Pros','Cons'],
-    [
-        ['Progressive','ClustalW, Clustal Omega','Build guide tree → align closest pairs first → add sequences','Fast, intuitive','Early errors propagate ("once a gap, always a gap")'],
-        ['Iterative','MUSCLE, MAFFT','Refine alignment iteratively using multiple rounds','More accurate than progressive','Slower for very large datasets'],
-        ['Consistency-based','T-Coffee, ProbCons','Use pairwise alignments as constraints for MSA','Very accurate for divergent sequences','Slowest; memory-intensive'],
-        ['HMM-based','HMMER, HHblits','Profile Hidden Markov Models','Excellent for remote homologs','Requires profile database']
-    ]
-)}
-
-<h3>🔧 Step-by-Step: Running MSA Tools</h3>
-
-<h4>Install tools</h4>
-${codeBlock('bash',`
-# Via Conda (recommended — installs all tools)
-conda create -n msa_env -c bioconda mafft muscle clustalo t-coffee trimal
-conda activate msa_env
-
-# Or individually
-sudo apt-get install mafft muscle
-`)}
-
-<h4>Prepare input sequences</h4>
-${codeBlock('bash',`
-# Download homologous cytochrome c sequences from NCBI
-# Save as cytochrome_c.fasta with multiple sequences in FASTA format
-
-# Example: fetch from Entrez
-# Install: conda install -c bioconda entrez-direct
-esearch -db protein -query "cytochrome c [PROT] AND mammals[ORGN]" | \\
-  efetch -format fasta | head -500 > cytochrome_c.fasta
-
-# Check how many sequences
-grep -c "^>" cytochrome_c.fasta
-`)}
-
-<h4>MAFFT (recommended for most cases)</h4>
-${codeBlock('bash',`
-# Default auto mode (selects best algorithm based on # sequences)
-mafft --auto cytochrome_c.fasta > cytochrome_c_aligned.fasta
-
-# For high accuracy with < 200 sequences
-mafft --localpair --maxiterate 1000 cytochrome_c.fasta > aligned_linsi.fasta
-
-# For large datasets (> 2000 sequences) — fast mode
-mafft --retree 1 cytochrome_c.fasta > aligned_fast.fasta
-
-# Adjusting gap penalties
-mafft --op 1.53 --ep 0.123 cytochrome_c.fasta > aligned_custom_gaps.fasta
-`)}
-
-<h4>MUSCLE v5</h4>
-${codeBlock('bash',`
-# MUSCLE v5 (new version — note different syntax from v3)
-muscle -align cytochrome_c.fasta -output aligned_muscle.fasta
-
-# MUSCLE v3 (legacy — still widely used)
-muscle -in cytochrome_c.fasta -out aligned_muscle3.fasta
-`)}
-
-<h4>Clustal Omega</h4>
-${codeBlock('bash',`
-# Basic usage
-clustalo -i cytochrome_c.fasta -o aligned_clustalo.fasta --outfmt=fasta
-
-# With guide tree output
-clustalo -i cytochrome_c.fasta -o aligned_clustalo.fasta \\
-  --guidetree-out=guide_tree.nwk --force
-`)}
-
-<h4>Trim alignment (remove poorly aligned regions)</h4>
-${codeBlock('bash',`
-# Using trimAl
-# Automated trimming
-trimal -in aligned_linsi.fasta -out trimmed.fasta -automated1
-
-# Gap threshold: remove columns with > 50% gaps
-trimal -in aligned_linsi.fasta -out trimmed_gt.fasta -gt 0.5
-
-# Strict trimming for phylogenetics
-trimal -in aligned_linsi.fasta -out trimmed_strict.fasta -strict
-
-# View trimming statistics
-trimal -in aligned_linsi.fasta -out /dev/null -htmlout alignment_report.html
-`)}
-
-${interpretBox(`
-<ul>
-<li><strong>Conserved columns</strong> — Positions where most/all sequences share the same residue → likely functionally important</li>
-<li><strong>Gap-rich regions</strong> — Insertions/deletions; may represent loops, linkers, or alignment artifacts</li>
-<li><strong>Consensus sequence</strong> — Most frequent residue at each position</li>
-<li><strong>Visualization</strong> — Use <strong>Jalview</strong> (desktop) or <strong>MView</strong> (web) to color-code by conservation, chemistry, or identity</li>
-<li>For phylogenetics: always <strong>trim</strong> the alignment (remove gappy, ambiguous columns) before tree building</li>
-</ul>`)}
-
-<h3>⚠️ Common Errors</h3>
-${errorBlock('MAFFT: "nthread = X" warning or slow execution',
-`<p>MAFFT defaults to single-threaded. Use <code>--thread N</code> for parallelism:</p>
-${codeBlock('bash',`mafft --auto --thread 8 sequences.fasta > aligned.fasta`)}`)}
-
-${errorBlock('Alignment looks wrong — large blocks of gaps in otherwise similar sequences',
-`<p>Try a different algorithm or adjust gap penalties:</p>
-${codeBlock('bash',`# Try L-INS-i (most accurate for < 200 seqs)
-mafft --localpair --maxiterate 1000 sequences.fasta > aligned.fasta
-
-# Or try T-Coffee for very divergent sequences
-t_coffee sequences.fasta -output fasta_aln`)}`)}
-
-${errorBlock('Input file has mixed DNA and protein sequences',
-`<p>Ensure all sequences are the same type. MAFFT will autodetect, but mixing types causes errors.</p>
-${codeBlock('bash',`# Check sequence type
-head -2 sequences.fasta
-# DNA: only A, T, G, C, N
-# Protein: contains other letters like M, W, F, Y`)}`)}
-`) + sectionCard(`
-<h2>📊 MSA in R</h2>
-${codeBlock('r',`
-# Using the msa package (Bioconductor)
-BiocManager::install("msa")
-library(msa)
-library(Biostrings)
-
-# Read sequences
-seqs <- readAAStringSet("cytochrome_c.fasta")
-
-# ClustalW alignment
-aln_cw <- msa(seqs, method = "ClustalW")
-print(aln_cw, show = "complete")
-
-# MUSCLE alignment
-aln_mu <- msa(seqs, method = "Muscle")
-
-# Convert to other formats for downstream use
-library(seqinr)
-aln_seqinr <- msaConvert(aln_cw, type = "seqinr::alignment")
-
-# Write aligned FASTA
-writeXStringSet(unmasked(aln_cw), file = "aligned_R.fasta")
-
-# Visualization
-msaPrettyPrint(aln_cw, output = "pdf", file = "alignment.pdf",
-               showNames = "left", showLogo = "top",
-               askForOverwrite = FALSE)
-`)}
-`);
-
-/* =================================================================
-   BLAST & SEQUENCE SEARCH
-   ================================================================= */
-CONTENT['blast-search'] = () => sectionCard(`
-<h2>💥 BLAST & Sequence Search</h2>
-${tagsHTML([
-    {type:'tool',label:'BLAST+'},{type:'tool',label:'DIAMOND'},{type:'tool',label:'HMMER'},
-    {type:'tool',label:'MMseqs2'},{type:'algo',label:'Seed-and-Extend'},
-    {type:'db',label:'nr'},{type:'db',label:'nt'},{type:'db',label:'Swiss-Prot'}
-])}
-
-${infoBox('definition','📖 What is BLAST?',
-`<p><strong>Basic Local Alignment Search Tool</strong> (Altschul et al., 1990) rapidly finds regions of local
-similarity between a query sequence and a database. It uses a <strong>heuristic seed-and-extend</strong>
-approach that is much faster than Smith-Waterman while still highly sensitive.</p>`)}
-
-<h3>📋 BLAST Programs</h3>
-${tableHTML(
-    ['Program','Query','Database','Use Case'],
-    [
-        ['<code>blastn</code>','Nucleotide','Nucleotide','DNA vs DNA (e.g., identify species from a sequence)'],
-        ['<code>blastp</code>','Protein','Protein','Protein vs protein (function prediction)'],
-        ['<code>blastx</code>','Nucleotide (translated)','Protein','DNA query → all 6 reading frames searched against protein DB'],
-        ['<code>tblastn</code>','Protein','Nucleotide (translated)','Protein query vs translated nucleotide DB'],
-        ['<code>tblastx</code>','Nucleotide (translated)','Nucleotide (translated)','Both translated — very slow, rarely used'],
-        ['<code>megablast</code>','Nucleotide','Nucleotide','Very similar sequences (>95% identity). Default for web blastn']
-    ]
-)}
-
-<h3>🧮 Key Statistics</h3>
-<h4>E-value (Expect value)</h4>
-${formulaHTML('E = K · m · n · e<sup>−λS</sup>')}
-<p>where <em>m</em> = query length, <em>n</em> = database size, <em>S</em> = alignment raw score, <em>K</em> and <em>λ</em> are statistical parameters.</p>
-${infoBox('tip','💡 Interpreting E-value',
-`<ul>
-<li><strong>E &lt; 1e-50</strong> — Nearly certain homolog</li>
-<li><strong>E &lt; 1e-10</strong> — Very likely homolog</li>
-<li><strong>E &lt; 0.01</strong> — Probable homolog (investigate further)</li>
-<li><strong>E &gt; 1</strong> — Likely a random match (not significant)</li>
-</ul>
-<p>E-value depends on database size: the same alignment will have a larger E-value in a larger database.</p>`)}
-
-<h4>Bit Score</h4>
-${formulaHTML("S' = (λ · S − ln K) / ln 2")}
-<p>Normalized score independent of database size. Higher = better. Comparable across searches.</p>
-
-<h3>🔧 Step-by-Step: Local BLAST</h3>
-<h4>Install BLAST+</h4>
-${codeBlock('bash',`
-# Conda
-conda install -c bioconda blast
-
-# Ubuntu/Debian
-sudo apt-get install ncbi-blast+
-
-# Verify
-blastn -version
-# blastn: 2.14.0+
-`)}
-
-<h4>Create a local database</h4>
-${codeBlock('bash',`
-# Download reference genomes or protein sequences
-wget https://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/mRNA_Prot/human.1.protein.faa.gz
-gunzip human.1.protein.faa.gz
-
-# Make BLAST database
-# -dbtype: nucl (DNA) or prot (protein)
-makeblastdb \\
-  -in human.1.protein.faa \\
-  -dbtype prot \\
-  -out human_prot_db \\
-  -parse_seqids
-
-# List database files
-ls human_prot_db.*
-# human_prot_db.phr  human_prot_db.pin  human_prot_db.psq ...
-`)}
-
-<h4>Run BLAST search</h4>
-${codeBlock('bash',`
-# Basic protein BLAST
-blastp \\
-  -query my_protein.fasta \\
-  -db human_prot_db \\
-  -out blast_results.txt \\
-  -evalue 1e-5 \\
-  -num_threads 8
-
-# Tabular output (most useful for parsing)
-blastp \\
-  -query my_protein.fasta \\
-  -db human_prot_db \\
-  -out blast_results.tsv \\
-  -evalue 1e-5 \\
-  -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore" \\
-  -num_threads 8 \\
-  -max_target_seqs 10
-
-# DNA BLAST
-blastn \\
-  -query my_gene.fasta \\
-  -db nt \\
-  -out blastn_results.tsv \\
-  -evalue 1e-10 \\
-  -outfmt 6 \\
-  -num_threads 8
-
-# Translated search (DNA query → protein DB)
-blastx \\
-  -query my_contig.fasta \\
-  -db nr \\
-  -out blastx_results.tsv \\
-  -evalue 1e-5 \\
-  -outfmt 6
-`)}
-
-<h4>Output format 6 columns</h4>
-${tableHTML(
-    ['Column','Field','Description'],
-    [
-        ['1','qseqid','Query sequence ID'],
-        ['2','sseqid','Subject (hit) sequence ID'],
-        ['3','pident','Percent identity'],
-        ['4','length','Alignment length'],
-        ['5','mismatch','Number of mismatches'],
-        ['6','gapopen','Number of gap openings'],
-        ['7','qstart','Query start position'],
-        ['8','qend','Query end position'],
-        ['9','sstart','Subject start position'],
-        ['10','send','Subject end position'],
-        ['11','evalue','E-value'],
-        ['12','bitscore','Bit score']
-    ]
-)}
-
-<h3>⚡ DIAMOND (Faster Alternative)</h3>
-${codeBlock('bash',`
-# Install
-conda install -c bioconda diamond
-
-# Make database (much faster than BLAST)
-diamond makedb --in nr.faa --db nr_diamond
-
-# Run search (100-1000x faster than BLAST for large datasets)
-diamond blastp \\
-  --query my_proteins.fasta \\
-  --db nr_diamond \\
-  --out diamond_results.tsv \\
-  --outfmt 6 \\
-  --evalue 1e-5 \\
-  --threads 16 \\
-  --sensitive      # or --very-sensitive for maximum sensitivity
-`)}
-
-${interpretBox(`
-<ul>
-<li><strong>% Identity &gt; 30%</strong> over &gt; 100 aa → likely homolog (for proteins)</li>
-<li><strong>Query coverage</strong> — What fraction of your query aligned? Low coverage may indicate partial matches or domain-level hits</li>
-<li><strong>Multiple HSPs</strong> — Multiple high-scoring pairs for one subject may indicate repeated domains</li>
-<li>Always check the <strong>alignment</strong> (not just E-value) for the top hits</li>
-<li>No hits? Try a more sensitive search: use <code>blastp</code> instead of <code>blastn</code>, or use PSI-BLAST / HMMER</li>
-</ul>`)}
-
-<h3>⚠️ Common Errors</h3>
-${errorBlock('BLAST database error: "No alias or index file found"',
-`<p>The database wasn't built correctly. Rebuild:</p>
-${codeBlock('bash',`makeblastdb -in sequences.fasta -dbtype nucl -out mydb
-# Check files exist:
-ls mydb.*`)}`)}
-
-${errorBlock('No hits found even though homologs exist',
-`<ul>
-<li>Relax E-value threshold: <code>-evalue 10</code></li>
-<li>Use a more sensitive program: <code>blastp</code> instead of <code>blastn</code></li>
-<li>Try PSI-BLAST: <code>psiblast -query q.fa -db nr -num_iterations 3</code></li>
-<li>Check that query and database are the same type (protein vs nucleotide)</li>
-</ul>`)}
-
-${errorBlock('Bus error or segmentation fault with large databases',
-`<p>Increase system resources or use DIAMOND for large-scale searches:</p>
-${codeBlock('bash',`# Use DIAMOND instead
-diamond blastp --db nr --query query.fa --out results.tsv`)}`)}
-`);
-
-/* =================================================================
-   SEQUENCE DATABASES
-   ================================================================= */
-CONTENT['sequence-databases'] = () => sectionCard(`
-<h2>🗄️ Sequence Databases</h2>
-${tagsHTML([
-    {type:'db',label:'NCBI GenBank'},{type:'db',label:'RefSeq'},{type:'db',label:'UniProt'},
-    {type:'db',label:'EMBL-EBI'},{type:'db',label:'SRA'},{type:'db',label:'GEO'},
-    {type:'tool',label:'SRA Toolkit'},{type:'tool',label:'Entrez Direct'},{type:'tool',label:'wget'}
-])}
-
-${infoBox('definition','📖 Overview',
-`<p>Biological sequence databases are the foundation of bioinformatics research. They store nucleotide sequences,
-protein sequences, gene expression data, and associated metadata collected from experiments worldwide.</p>`)}
-
-<h3>📊 Major Databases</h3>
-${tableHTML(
-    ['Database','Organization','Type','URL','Content'],
-    [
-        ['GenBank','NCBI','Nucleotide','ncbi.nlm.nih.gov','All publicly available DNA sequences'],
-        ['RefSeq','NCBI','Curated reference','ncbi.nlm.nih.gov/refseq','Non-redundant, curated reference genomes and transcripts'],
-        ['SRA','NCBI','Raw sequencing','ncbi.nlm.nih.gov/sra','Raw NGS reads (FASTQ) — largest data repo'],
-        ['GEO','NCBI','Expression','ncbi.nlm.nih.gov/geo','Microarray and RNA-seq expression datasets'],
-        ['UniProt','UniProt Consortium','Protein','uniprot.org','Swiss-Prot (curated) + TrEMBL (automated)'],
-        ['ENA','EMBL-EBI','Nucleotide','ebi.ac.uk/ena','European mirror of GenBank/SRA'],
-        ['PDB','RCSB','Structure','rcsb.org','3D protein and nucleic acid structures'],
-        ['KEGG','Kanehisa Lab','Pathway','genome.jp/kegg','Metabolic and signaling pathways'],
-        ['Pfam / InterPro','EMBL-EBI','Domains','interpro.embl-ebi.ac.uk','Protein domain families and functional annotation']
-    ]
-)}
-
-<h3>🔧 Downloading Data from NCBI</h3>
-<h4>Install SRA Toolkit</h4>
-${codeBlock('bash',`
-# Conda
-conda install -c bioconda sra-tools
-
-# Configure (first time only)
-vdb-config --interactive
-# Set cache directory, accept terms
-`)}
-
-<h4>Download raw reads from SRA</h4>
-${codeBlock('bash',`
-# Download and convert SRA to FASTQ
-# Example: E. coli RNA-seq data
-fastq-dump --split-3 --gzip SRR1234567
-
-# Better: use fasterq-dump (faster, multi-threaded)
-fasterq-dump SRR1234567 --split-3 --threads 8
-gzip SRR1234567_1.fastq SRR1234567_2.fastq
-
-# Prefetch first (for large files, more reliable)
-prefetch SRR1234567
-fasterq-dump SRR1234567 --split-3 --threads 8
-`)}
-
-<h4>Entrez Direct (command-line NCBI access)</h4>
-${codeBlock('bash',`
-# Install
-conda install -c bioconda entrez-direct
-
-# Search for sequences
-esearch -db nucleotide -query "BRCA1[Gene] AND Homo sapiens[Organism]" | \\
-  efetch -format fasta > brca1_human.fasta
-
-# Search protein
-esearch -db protein -query "insulin AND Mammalia[Organism]" | \\
-  efetch -format fasta > mammal_insulin.fasta
-
-# Get GenBank format
-esearch -db nucleotide -query "NC_000001.11" | \\
-  efetch -format gb > chr1_human.gb
-
-# Download genome from NCBI FTP
-wget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna.gz
-`)}
-
-<h4>Download from UniProt</h4>
-${codeBlock('bash',`
-# Single protein by accession
-wget -O p53_human.fasta "https://rest.uniprot.org/uniprotkb/P04637.fasta"
-
-# Batch download with search query (REST API)
-wget -O kinases.fasta "https://rest.uniprot.org/uniprotkb/stream?query=(family:kinase)+AND+(organism_id:9606)&format=fasta"
-`)}
-
-${infoBox('tip','💡 Tips for Data Download',
-`<ul>
-<li>Always record the <strong>accession number, database, version, and download date</strong></li>
-<li>Use <code>md5sum</code> to verify file integrity after download</li>
-<li>Store raw data in a <code>raw/</code> directory and never modify it — work on copies</li>
-<li>For reproducibility, include download commands in your analysis scripts</li>
-</ul>`)}
-`);
-
-/* =================================================================
-   FILE FORMATS
-   ================================================================= */
-CONTENT['file-formats'] = () => sectionCard(`
-<h2>📄 File Formats & Data Types</h2>
-
-${infoBox('definition','📖 Overview',
-`<p>Understanding bioinformatics file formats is essential for every workflow. Each format encodes specific
-biological information and is consumed by specific tools.</p>`)}
-
-<h3>📋 Common Formats Reference</h3>
-${tableHTML(
-    ['Format','Extension','Content','Used By'],
-    [
-        ['FASTA','.fasta, .fa, .fna, .faa','Sequences with headers','BLAST, MAFFT, assembly tools'],
-        ['FASTQ','.fastq, .fq','Sequences + quality scores','FastQC, Trimmomatic, aligners'],
-        ['SAM','.sam','Aligned reads (text)','samtools, Picard, IGV'],
-        ['BAM','.bam','Aligned reads (binary, compressed)','samtools, featureCounts, IGV'],
-        ['CRAM','.cram','Aligned reads (highly compressed)','samtools (requires reference)'],
-        ['VCF','.vcf','Variant calls (SNPs, indels)','GATK, bcftools, SnpEff'],
-        ['BED','.bed','Genomic intervals','bedtools, UCSC browser'],
-        ['GFF3','.gff3','Gene annotations (v3)','MAKER, GenBank, JBrowse'],
-        ['GTF','.gtf','Gene annotations (Ensembl)','featureCounts, HISAT2, StringTie'],
-        ['GenBank','.gb, .gbk','Annotated sequences','Biopython, Artemis, SnapGene'],
-        ['Newick','.nwk, .tree','Phylogenetic trees','MEGA, FigTree, ape (R)'],
-        ['PDB','.pdb','3D protein structures','PyMOL, Chimera, GROMACS'],
-        ['SRA','.sra','Raw sequencing archive','SRA Toolkit']
-    ]
-)}
-
-<h3>📝 Format Details & Examples</h3>
-
-<h4>FASTA</h4>
-${codeBlock('text',`
->sp|P04637|P53_HUMAN Cellular tumor antigen p53 OS=Homo sapiens
-MEEPQSDPSVEPPLSQETFSDLWKLLPENNVLSPLPSQAMDDLMLSPDDIEQWFTEDPGP
-DEAPRMPEAAPPVAPAPAAPTPAAPAPAPSWPLSSSVPSQKTYPQGLNGTVNLPGRNSFEV
-RVCACPGRDRRTEEENLHKTTGIDSFLHPATELLDTTDSHFRELLEGLKRFED`)}
-<p><strong>Rules:</strong> Header line starts with <code>&gt;</code>. Sequence follows on subsequent lines (any line length). No blank lines within a record.</p>
-
-<h4>FASTQ</h4>
-${codeBlock('text',`
-@SRR1234567.1 1 length=150
-ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG
-+
-IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII`)}
-<p><strong>4 lines per read:</strong> (1) @Header, (2) Sequence, (3) +Separator, (4) Quality scores (Phred+33 ASCII encoding).</p>
-${formulaHTML('Q = −10 · log<sub>10</sub>(P<sub>error</sub>)&ensp;&ensp;→&ensp;&ensp;Q30 means P = 0.001 (99.9% accuracy)')}
-
-<h4>SAM/BAM format key fields</h4>
-${tableHTML(
-    ['Col','Field','Description'],
-    [
-        ['1','QNAME','Read name'],
-        ['2','FLAG','Bitwise flag (mapped, paired, etc.)'],
-        ['3','RNAME','Reference chromosome'],
-        ['4','POS','1-based mapping position'],
-        ['5','MAPQ','Mapping quality (0-60)'],
-        ['6','CIGAR','Alignment description (e.g., 75M2I23M)'],
-        ['10','SEQ','Read sequence'],
-        ['11','QUAL','Base qualities']
-    ]
-)}
-
-<h3>🔧 Format Conversions</h3>
-${codeBlock('bash',`
-# SAM → BAM (compress)
-samtools view -bS input.sam | samtools sort -o sorted.bam
-samtools index sorted.bam
-
-# BAM → SAM (decompress)
-samtools view -h sorted.bam > output.sam
-
-# BAM → FASTQ (extract reads)
-samtools fastq -1 reads_R1.fq -2 reads_R2.fq sorted.bam
-
-# GFF → GTF
-gffread annotations.gff3 -T -o annotations.gtf
-
-# GenBank → FASTA (using any-to-any converter or Biopython)
-python3 -c "
-from Bio import SeqIO
-SeqIO.convert('input.gb', 'genbank', 'output.fasta', 'fasta')
-"
-
-# FASTQ → FASTA (remove quality)
-sed -n '1~4s/^@/>/p;2~4p' input.fastq > output.fasta
-
-# Compress/decompress
-gzip file.fastq          # compress
-gunzip file.fastq.gz     # decompress
-pigz -p 8 file.fastq     # parallel gzip (faster)
-`)}
-
-<h3>🔍 Quick File Inspection</h3>
-${codeBlock('bash',`
-# Count sequences in FASTA
-grep -c "^>" sequences.fasta
-
-# Count reads in FASTQ
-echo $(( $(wc -l < reads.fastq) / 4 ))
-
-# Or with seqkit (recommended)
-conda install -c bioconda seqkit
-seqkit stats reads.fastq
-
-# View BAM header and first few alignments
-samtools view -H sorted.bam | head
-samtools view sorted.bam | head -5
-
-# View VCF
-bcftools view variants.vcf | head -30
-bcftools stats variants.vcf > vcf_stats.txt
-`)}
-`);
-
-/* ================================================================
-   §6  RENDERING ENGINE
-   ================================================================ */
-
-/* --- build flat index for search --- */
-function buildNodeIndex(node, path) {
-    path = path || [];
+      // ──────────────────────────────────────────────
+      //  1. SEQUENCE ANALYSIS
+      // ──────────────────────────────────────────────
+      {
+        id: "sequence_analysis",
+        label: "Sequence Analysis",
+        icon: "🔤",
+        color: "yellow",
+        content: {
+          title: "🔤 Sequence Analysis",
+          what: "Sequence analysis is the process of subjecting a DNA, RNA, or protein sequence to computational methods to understand its features, function, structure, or evolution. It is the foundational pillar of bioinformatics.",
+          questions: [
+            "What is the identity of an unknown sequence?",
+            "Which regions of two or more sequences are similar?",
+            "What functional domains exist in a protein sequence?",
+            "Where are the open reading frames in a DNA sequence?",
+            "How conserved is a particular region across species?"
+          ],
+          tools: [
+            { name: "BLAST", type: "tool", desc: "Basic Local Alignment Search Tool — finds similar sequences in databases" },
+            { name: "HMMER", type: "tool", desc: "Profile HMM-based sequence searching" },
+            { name: "Clustal Omega", type: "tool", desc: "Multiple sequence alignment" },
+            { name: "MUSCLE", type: "tool", desc: "Fast multiple sequence alignment" },
+            { name: "MAFFT", type: "tool", desc: "High-speed multiple alignment" },
+            { name: "EMBOSS", type: "tool", desc: "Suite of sequence analysis tools" },
+            { name: "Biopython", type: "lang", desc: "Python library for biological computation" }
+          ],
+          databases: [
+            { name: "NCBI GenBank", type: "db", desc: "Nucleotide sequence database" },
+            { name: "UniProt", type: "db", desc: "Protein sequence and annotation" },
+            { name: "Pfam", type: "db", desc: "Protein family domains (now in InterPro)" },
+            { name: "InterPro", type: "db", desc: "Protein classification and domain database" }
+          ]
+        },
+        children: [
+          {
+            id: "pairwise_alignment",
+            label: "Pairwise Alignment",
+            icon: "↔️",
+            content: {
+              title: "↔️ Pairwise Sequence Alignment",
+              what: "Pairwise alignment compares two sequences to identify regions of similarity. It can be global (entire length, Needleman-Wunsch) or local (best matching sub-region, Smith-Waterman).",
+              questions: [
+                "How similar are two sequences?",
+                "What is the optimal alignment between two sequences?",
+                "Are two proteins homologous?"
+              ],
+              algorithms: [
+                { name: "Needleman-Wunsch", desc: "Global alignment using dynamic programming. Time: O(mn), Space: O(mn)." },
+                { name: "Smith-Waterman", desc: "Local alignment using dynamic programming with zero-reset. Time: O(mn), Space: O(mn)." },
+                { name: "BLAST heuristic", desc: "Seed-and-extend heuristic for fast database search." }
+              ],
+              math: [
+                "Needleman-Wunsch recurrence: F(i,j) = max{ F(i-1,j-1) + s(xᵢ,yⱼ), F(i-1,j) + d, F(i,j-1) + d }",
+                "Smith-Waterman recurrence: H(i,j) = max{ 0, H(i-1,j-1) + s(xᵢ,yⱼ), H(i-1,j) + d, H(i,j-1) + d }",
+                "E-value: E = K·m·n·e^(−λS) — expected number of alignments with score ≥ S by chance"
+              ],
+              workflow: [
+                { step: 1, title: "Install BLAST+", cmd: "sudo apt-get install ncbi-blast+", lang: "bash" },
+                { step: 2, title: "Create a BLAST database", cmd: "makeblastdb -in reference.fasta -dbtype nucl -out mydb", lang: "bash" },
+                { step: 3, title: "Run BLAST search", cmd: "blastn -query query.fasta -db mydb -out results.txt -evalue 1e-5 -outfmt 6 -num_threads 4", lang: "bash" },
+                { step: 4, title: "Interpret output columns", cmd: "# Output format 6 columns:\n# qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore\n# Key: evalue < 1e-5 = significant hit\n# pident > 30% for proteins suggests homology", lang: "bash" }
+              ],
+              interpretation: "An E-value < 1e-5 generally indicates a statistically significant match. Percent identity >30% for proteins or >70% for nucleotides suggests homology. Bit score is a normalized score independent of database size — higher is better. Check alignment length to ensure it covers a significant portion of the query.",
+              errors: [
+                { error: "BLAST database error: No alias or index file found", solution: "Run makeblastdb again. Ensure -dbtype matches your sequence type (nucl or prot). Verify file permissions." },
+                { error: "Bus error or Segmentation fault", solution: "Usually a memory issue. Try reducing -num_threads or use a machine with more RAM. Check BLAST version compatibility." },
+                { error: "No hits found", solution: "Try increasing -evalue threshold (e.g., 10). Verify your query isn't empty. Try a different BLAST program (blastn vs tblastx). Check if database is appropriate." }
+              ]
+            }
+          },
+          {
+            id: "msa",
+            label: "Multiple Sequence Alignment",
+            icon: "📊",
+            content: {
+              title: "📊 Multiple Sequence Alignment (MSA)",
+              what: "MSA extends pairwise alignment to three or more sequences simultaneously, revealing conserved regions, functional domains, and evolutionary relationships across a set of related sequences.",
+              questions: [
+                "Which residues are conserved across a protein family?",
+                "What regions are functionally important?",
+                "How can we infer evolutionary relationships from sequence conservation?"
+              ],
+              algorithms: [
+                { name: "Progressive alignment (Clustal)", desc: "Build guide tree, align closest pairs first, progressively add sequences." },
+                { name: "Iterative refinement (MUSCLE)", desc: "Repeated refinement cycles to improve alignment score." },
+                { name: "Consistency-based (T-Coffee)", desc: "Uses library of pairwise alignments to guide multiple alignment." },
+                { name: "MAFFT FFT-NS-2", desc: "Fast Fourier Transform-based rapid alignment." }
+              ],
+              tools: [
+                { name: "Clustal Omega", type: "tool" },
+                { name: "MUSCLE", type: "tool" },
+                { name: "MAFFT", type: "tool" },
+                { name: "T-Coffee", type: "tool" },
+                { name: "MEGA", type: "tool" },
+                { name: "Jalview", type: "tool", desc: "MSA visualization and editing" }
+              ],
+              math: [
+                "Sum-of-pairs score: SP = Σᵢ<ⱼ score(Sᵢ, Sⱼ)",
+                "Guide tree: UPGMA or Neighbor-Joining distance tree from pairwise distances",
+                "Substitution matrices: BLOSUM62 for proteins, NUC.4.4 for nucleotides"
+              ],
+              workflow: [
+                { step: 1, title: "Install MAFFT", cmd: "sudo apt-get install mafft\n# or\nconda install -c bioconda mafft", lang: "bash" },
+                { step: 2, title: "Prepare input FASTA", cmd: "# sequences.fasta should contain 3+ related sequences\n# Example:\n# >Seq1_Human\n# MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSH\n# >Seq2_Mouse\n# MVLSGEDKSNIKAAWGKIGGHGAEYGAEALERMFASFPTTKTYFPHFDVSH\n# >Seq3_Chicken\n# MVLSAADKNNVKGIFTKIAGHAEEYGAETLERMFITYPPTKTYFPHFDLSH", lang: "bash" },
+                { step: 3, title: "Run MAFFT alignment", cmd: "# Default (fast)\nmafft sequences.fasta > aligned.fasta\n\n# High accuracy (L-INS-i for <200 sequences)\nmafft --localpair --maxiterate 1000 sequences.fasta > aligned.fasta\n\n# For large datasets (>2000 sequences)\nmafft --retree 1 sequences.fasta > aligned.fasta", lang: "bash" },
+                { step: 4, title: "Visualize with Jalview or AliView", cmd: "# Install AliView (lightweight MSA viewer)\n# Download from: https://ormbunkar.se/aliview/\n# Open aligned.fasta in AliView\n\n# Or use command-line visualization:\nless aligned.fasta", lang: "bash" },
+                { step: 5, title: "Alternative: Clustal Omega", cmd: "# Install\nsudo apt-get install clustalo\n\n# Run\nclustal omega -i sequences.fasta -o aligned.fasta --outfmt=fasta -v\n\n# With guide tree output\nclustal omega -i sequences.fasta -o aligned.fasta --guidetree-out=tree.nwk", lang: "bash" }
+              ],
+              interpretation: "Look for columns with high conservation (same amino acid/nucleotide across most sequences) — these are likely functionally or structurally important. Gaps may indicate insertions or deletions (indels). Variable regions may evolve under less selective constraint. Use alignment quality scores and manually inspect ambiguous regions.",
+              errors: [
+                { error: "Sequences too divergent — poor alignment", solution: "Use more sensitive algorithm like L-INS-i in MAFFT or T-Coffee. Consider if sequences are truly homologous. Try PSI-BLAST first to confirm." },
+                { error: "Out of memory for large datasets", solution: "Use MAFFT --retree 1 or --parttree for >10,000 sequences. Reduce dataset by removing redundant sequences with CD-HIT." }
+              ]
+            }
+          },
+          {
+            id: "sequence_databases",
+            label: "Sequence Databases & Retrieval",
+            icon: "🗄️",
+            content: {
+              title: "🗄️ Sequence Databases & Retrieval",
+              what: "Biological sequence databases are organized collections of DNA, RNA, and protein sequences. Efficient retrieval and understanding of database formats is fundamental to all bioinformatics analyses.",
+              questions: [
+                "Where can I find a specific gene or protein sequence?",
+                "How do I download sequences programmatically?",
+                "What file formats are used for biological sequences?"
+              ],
+              databases: [
+                { name: "NCBI GenBank", type: "db", desc: "Primary nucleotide database" },
+                { name: "NCBI RefSeq", type: "db", desc: "Curated reference sequences" },
+                { name: "UniProt/SwissProt", type: "db", desc: "Curated protein sequences" },
+                { name: "UniProt/TrEMBL", type: "db", desc: "Computationally annotated proteins" },
+                { name: "Ensembl", type: "db", desc: "Vertebrate genomes and annotation" },
+                { name: "DDBJ", type: "db", desc: "DNA Data Bank of Japan" },
+                { name: "ENA", type: "db", desc: "European Nucleotide Archive" },
+                { name: "PDB", type: "db", desc: "Protein Data Bank — 3D structures" },
+                { name: "KEGG", type: "db", desc: "Pathway and genome database" },
+                { name: "Gene Ontology (GO)", type: "db", desc: "Functional annotation terms" }
+              ],
+              formats: [
+                { name: "FASTA", desc: ">header followed by sequence — universal format" },
+                { name: "GenBank (.gb)", desc: "Rich annotation format with features" },
+                { name: "FASTQ", desc: "Sequence + quality scores from NGS" },
+                { name: "SAM/BAM", desc: "Sequence Alignment/Map format" },
+                { name: "VCF", desc: "Variant Call Format" },
+                { name: "GFF/GTF", desc: "Genome Feature Format for annotations" },
+                { name: "BED", desc: "Genomic intervals" },
+                { name: "PDB", desc: "Protein 3D structure coordinates" },
+                { name: "EMBL", desc: "European sequence annotation format" }
+              ],
+              workflow: [
+                { step: 1, title: "Install Entrez Direct (NCBI E-utilities CLI)", cmd: "# Install NCBI Entrez Direct\nsh -c \"$(curl -fsSL https://ftp.ncbi.nlm.nih.gov/entrez/entrezdirect/install-edirect.sh)\"\nexport PATH=${HOME}/edirect:${PATH}", lang: "bash" },
+                { step: 2, title: "Search and download sequences", cmd: "# Search for human TP53 gene\nesearch -db nucleotide -query \"TP53[Gene] AND Homo sapiens[Organism] AND refseq[filter]\" | efetch -format fasta > tp53.fasta\n\n# Download protein by accession\nefetch -db protein -id P04637 -format fasta > p53_protein.fasta\n\n# Download multiple accessions\nefetch -db nucleotide -id NM_000546,NM_001126112 -format fasta > tp53_variants.fasta", lang: "bash" },
+                { step: 3, title: "Using datasets CLI (NCBI Datasets)", cmd: "# Install NCBI datasets CLI\nconda install -c conda-forge ncbi-datasets-cli\n\n# Download genome by organism\ndatasets download genome taxon 'Homo sapiens' --reference --include genome,gff3\n\n# Download by accession\ndatasets download genome accession GCF_000001405.40 --include genome,gff3", lang: "bash" },
+                { step: 4, title: "SRA data download", cmd: "# Install SRA Toolkit\nconda install -c bioconda sra-tools\n\n# Download FASTQ from SRA\nprefetch SRR1234567\nfasterq-dump SRR1234567 --split-3 -O ./fastq_output/", lang: "bash" }
+              ]
+            }
+          }
+        ]
+      },
+
+      // ──────────────────────────────────────────────
+      //  2. GENOMICS
+      // ──────────────────────────────────────────────
+      {
+        id: "genomics",
+        label: "Genomics",
+        icon: "🧪",
+        color: "blue",
+        content: {
+          title: "🧪 Genomics",
+          what: "Genomics is the study of the complete set of DNA (genome) within an organism. It encompasses genome sequencing, assembly, annotation, variant calling, and comparative analysis of genomes across species.",
+          questions: [
+            "What is the complete DNA sequence of an organism?",
+            "How many genes does an organism have and what are they?",
+            "What genetic variants exist between individuals?",
+            "How do genomes evolve and differ between species?",
+            "Which genomic regions are associated with diseases?"
+          ],
+          tools: [
+            { name: "BWA", type: "tool", desc: "Burrows-Wheeler Aligner for read mapping" },
+            { name: "Bowtie2", type: "tool", desc: "Fast short-read aligner" },
+            { name: "SAMtools", type: "tool", desc: "SAM/BAM manipulation and variant calling" },
+            { name: "BCFtools", type: "tool", desc: "Variant calling and filtering" },
+            { name: "GATK", type: "tool", desc: "Genome Analysis Toolkit — gold-standard variant calling" },
+            { name: "SPAdes", type: "tool", desc: "De novo genome assembler" },
+            { name: "Velvet", type: "tool", desc: "Short read de novo assembler" },
+            { name: "Picard", type: "tool", desc: "BAM manipulation utilities" },
+            { name: "FastQC", type: "tool", desc: "Quality control for sequencing data" },
+            { name: "MultiQC", type: "tool", desc: "Aggregate QC reports" }
+          ]
+        },
+        children: [
+          {
+            id: "genome_assembly",
+            label: "Genome Assembly",
+            icon: "🏗️",
+            content: {
+              title: "🏗️ Genome Assembly",
+              what: "Genome assembly is the computational process of reconstructing the complete genome sequence from short or long reads produced by sequencing. It can be de novo (no reference) or reference-guided.",
+              questions: [
+                "How do we reconstruct a genome from millions of short reads?",
+                "What is the quality and completeness of an assembly?",
+                "How do we handle repetitive regions?"
+              ],
+              algorithms: [
+                { name: "De Bruijn Graph", desc: "Breaks reads into k-mers and finds Eulerian path. Used by SPAdes, Velvet, SOAPdenovo." },
+                { name: "Overlap-Layout-Consensus (OLC)", desc: "Finds overlaps between reads, builds layout graph, generates consensus. Used by Canu, Flye for long reads." },
+                { name: "String Graph", desc: "Variant of OLC avoiding redundant overlaps. Used by SGA." }
+              ],
+              math: [
+                "Coverage depth: C = (N × L) / G where N=number of reads, L=read length, G=genome size",
+                "N50: length of the shortest contig at 50% of total assembly length",
+                "L50: number of contigs needed to reach 50% of total assembly"
+              ],
+              tools: [
+                { name: "SPAdes", type: "tool", desc: "De novo assembler for bacterial/small genomes" },
+                { name: "Canu", type: "tool", desc: "Long-read assembler (PacBio/ONT)" },
+                { name: "Flye", type: "tool", desc: "Fast long-read assembler" },
+                { name: "MEGAHIT", type: "tool", desc: "Ultra-fast metagenomic assembler" },
+                { name: "Hifiasm", type: "tool", desc: "Haplotype-resolved HiFi assembler" },
+                { name: "QUAST", type: "tool", desc: "Assembly quality assessment" },
+                { name: "BUSCO", type: "tool", desc: "Completeness assessment using orthologs" }
+              ],
+              workflow: [
+                { step: 1, title: "Quality Control", cmd: "# Install FastQC\nconda install -c bioconda fastqc multiqc\n\n# Run FastQC\nfastqc reads_R1.fastq.gz reads_R2.fastq.gz -o qc_output/ -t 4\n\n# Aggregate results\nmultiqc qc_output/ -o multiqc_report/", lang: "bash" },
+                { step: 2, title: "Read Trimming", cmd: "# Install Trimmomatic\nconda install -c bioconda trimmomatic\n\n# Trim adapters and low quality bases\ntrimmomatic PE -threads 4 \\\n  reads_R1.fastq.gz reads_R2.fastq.gz \\\n  trimmed_R1.fastq.gz unpaired_R1.fastq.gz \\\n  trimmed_R2.fastq.gz unpaired_R2.fastq.gz \\\n  ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 \\\n  LEADING:3 TRAILING:3 \\\n  SLIDINGWINDOW:4:15 MINLEN:36", lang: "bash" },
+                { step: 3, title: "De novo Assembly with SPAdes", cmd: "# Install SPAdes\nconda install -c bioconda spades\n\n# Run assembly\nspades.py -1 trimmed_R1.fastq.gz -2 trimmed_R2.fastq.gz \\\n  -o spades_output/ --careful -t 8 -m 16\n\n# For bacterial isolate genomes\nspades.py --isolate -1 trimmed_R1.fastq.gz -2 trimmed_R2.fastq.gz \\\n  -o spades_output/ -t 8", lang: "bash" },
+                { step: 4, title: "Assembly Quality Assessment", cmd: "# Install QUAST and BUSCO\nconda install -c bioconda quast busco\n\n# Run QUAST\nquast spades_output/scaffolds.fasta \\\n  -o quast_results/ \\\n  --min-contig 500\n\n# Run BUSCO (check completeness)\nbusco -i spades_output/scaffolds.fasta \\\n  -l bacteria_odb10 -o busco_results \\\n  -m genome -c 4\n\n# Key QUAST metrics to check:\n# - Total length, # contigs, N50, L50\n# - Largest contig, GC%\n# BUSCO: >95% complete = good assembly", lang: "bash" }
+              ],
+              interpretation: "A good assembly has high N50 (large contigs), few total contigs, and total length close to expected genome size. BUSCO completeness >95% indicates most genes are present. Check for contamination using tools like CheckM (prokaryotes). High duplication in BUSCO may indicate contamination or polyploidy.",
+              errors: [
+                { error: "SPAdes: Error in K-mer counting — not enough memory", solution: "Reduce k-mer sizes (--only-assembler), use -m to set memory limit, or subsample reads with seqtk sample." },
+                { error: "BUSCO: cannot find lineage dataset", solution: "Download lineage manually: busco --list-datasets, then busco --download bacteria_odb10" },
+                { error: "Assembly too fragmented (low N50)", solution: "Check coverage (aim 50-100x), ensure proper read trimming, try different k-mer sizes, use long reads if available." }
+              ]
+            }
+          },
+          {
+            id: "read_mapping",
+            label: "Read Mapping & Alignment",
+            icon: "🗺️",
+            content: {
+              title: "🗺️ Read Mapping / Alignment to Reference",
+              what: "Read mapping aligns sequencing reads to a reference genome. This is a prerequisite for variant calling, gene expression quantification, ChIP-seq peak calling, and many other downstream analyses.",
+              questions: [
+                "Where does each sequencing read originate in the reference genome?",
+                "How many reads map to each genomic region?",
+                "What is the mapping quality and coverage distribution?"
+              ],
+              algorithms: [
+                { name: "Burrows-Wheeler Transform (BWT)", desc: "Used by BWA and Bowtie2 for efficient exact and approximate string matching." },
+                { name: "FM-index", desc: "Compressed full-text index supporting fast pattern search on BWT." },
+                { name: "Minimap2 algorithm", desc: "Minimizer-based seed-chain-align for long reads." }
+              ],
+              tools: [
+                { name: "BWA-MEM2", type: "tool", desc: "Standard short-read aligner (DNA-seq)" },
+                { name: "Bowtie2", type: "tool", desc: "Fast gapped-read aligner" },
+                { name: "HISAT2", type: "tool", desc: "Splice-aware aligner for RNA-seq" },
+                { name: "STAR", type: "tool", desc: "Fast RNA-seq aligner" },
+                { name: "Minimap2", type: "tool", desc: "Long-read and assembly aligner" },
+                { name: "SAMtools", type: "tool", desc: "SAM/BAM processing and stats" }
+              ],
+              workflow: [
+                { step: 1, title: "Install tools", cmd: "conda install -c bioconda bwa-mem2 samtools picard", lang: "bash" },
+                { step: 2, title: "Index reference genome", cmd: "# Download reference genome (e.g., E. coli K-12)\nwget https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.fna.gz\ngunzip GCF_000005845.2_ASM584v2_genomic.fna.gz\nmv GCF_000005845.2_ASM584v2_genomic.fna reference.fasta\n\n# Index\nbwa-mem2 index reference.fasta\nsamtools faidx reference.fasta", lang: "bash" },
+                { step: 3, title: "Map reads", cmd: "# Align paired-end reads\nbwa-mem2 mem -t 8 reference.fasta \\\n  trimmed_R1.fastq.gz trimmed_R2.fastq.gz | \\\n  samtools sort -@ 4 -o aligned.bam\n\n# Index BAM\nsamtools index aligned.bam", lang: "bash" },
+                { step: 4, title: "Mark duplicates and stats", cmd: "# Mark PCR duplicates\npicard MarkDuplicates \\\n  I=aligned.bam O=dedup.bam \\\n  M=dup_metrics.txt REMOVE_DUPLICATES=true\nsamtools index dedup.bam\n\n# Alignment statistics\nsamtools flagstat dedup.bam\nsamtools stats dedup.bam > stats.txt\nplot-bamstats -p stats_plots/ stats.txt\n\n# Coverage\nsamtools depth -a dedup.bam | \\\n  awk '{sum+=$3} END {print \"Average coverage:\", sum/NR}'", lang: "bash" }
+              ],
+              interpretation: "Mapping rate >95% is expected for same-species DNA-seq. Duplicate rate >30% may indicate library complexity issues. Average coverage 30-50x is standard for variant calling. Check for even coverage distribution — sharp drops may indicate structural variants or repetitive regions.",
+              errors: [
+                { error: "bwa-mem2: fail to open reference file", solution: "Ensure reference.fasta exists and is indexed. Run bwa-mem2 index reference.fasta first." },
+                { error: "samtools sort: out of memory", solution: "Use -m flag to limit memory per thread: samtools sort -m 2G -@ 4" },
+                { error: "Very low mapping rate (<50%)", solution: "Check if reads and reference are from the same organism. Check for adapter contamination. Verify read quality with FastQC." }
+              ]
+            }
+          },
+          {
+            id: "variant_calling",
+            label: "Variant Calling",
+            icon: "🔬",
+            content: {
+              title: "🔬 Variant Calling",
+              what: "Variant calling identifies differences between a sequenced sample and a reference genome, including SNPs (Single Nucleotide Polymorphisms), insertions, deletions (indels), and structural variants.",
+              questions: [
+                "What SNPs and indels exist in this genome compared to the reference?",
+                "Which variants are associated with disease phenotypes?",
+                "What is the allele frequency of variants in a population?",
+                "Are there structural variants (SVs) like large deletions or inversions?"
+              ],
+              tools: [
+                { name: "GATK HaplotypeCaller", type: "tool", desc: "Gold-standard variant caller" },
+                { name: "BCFtools mpileup", type: "tool", desc: "Bayesian variant calling" },
+                { name: "FreeBayes", type: "tool", desc: "Bayesian haplotype-based caller" },
+                { name: "DeepVariant", type: "tool", desc: "Deep learning-based variant caller by Google" },
+                { name: "SnpEff", type: "tool", desc: "Variant annotation and effect prediction" },
+                { name: "ANNOVAR", type: "tool", desc: "Functional variant annotation" },
+                { name: "VEP", type: "tool", desc: "Variant Effect Predictor (Ensembl)" }
+              ],
+              math: [
+                "Genotype likelihood: P(D|G) = ∏ P(base|genotype) for each read covering the position",
+                "Phred quality: Q = -10·log₁₀(P_error) — Q30 means 1 in 1000 error probability",
+                "Variant Quality Score Recalibration (VQSR): Gaussian mixture model on variant annotations"
+              ],
+              workflow: [
+                { step: 1, title: "Install GATK and bcftools", cmd: "conda install -c bioconda gatk4 bcftools vcftools snpsift snpeff", lang: "bash" },
+                { step: 2, title: "Variant calling with bcftools (simple)", cmd: "# Generate pileup and call variants\nbcftools mpileup -f reference.fasta dedup.bam | \\\n  bcftools call -mv -Oz -o variants.vcf.gz\n\n# Index VCF\ntabix -p vcf variants.vcf.gz\n\n# Filter variants\nbcftools filter -s 'LowQual' -e 'QUAL<20 || DP<10' \\\n  variants.vcf.gz -Oz -o filtered.vcf.gz", lang: "bash" },
+                { step: 3, title: "GATK Best Practices pipeline", cmd: "# Create sequence dictionary\ngatk CreateSequenceDictionary -R reference.fasta\n\n# Add read groups (if not present)\ngatk AddOrReplaceReadGroups \\\n  -I dedup.bam -O rg_dedup.bam \\\n  -RGID 1 -RGLB lib1 -RGPL illumina \\\n  -RGPU unit1 -RGSM sample1\nsamtools index rg_dedup.bam\n\n# Call variants\ngatk HaplotypeCaller \\\n  -R reference.fasta \\\n  -I rg_dedup.bam \\\n  -O raw_variants.vcf\n\n# Select SNPs and filter\ngatk SelectVariants -V raw_variants.vcf \\\n  --select-type-to-include SNP -O raw_snps.vcf\n\ngatk VariantFiltration -V raw_snps.vcf \\\n  --filter-expression 'QD < 2.0' --filter-name 'QD2' \\\n  --filter-expression 'FS > 60.0' --filter-name 'FS60' \\\n  --filter-expression 'MQ < 40.0' --filter-name 'MQ40' \\\n  --filter-expression 'SOR > 3.0' --filter-name 'SOR3' \\\n  -O filtered_snps.vcf", lang: "bash" },
+                { step: 4, title: "Annotate variants", cmd: "# Annotate with SnpEff\nsnpEff ann GRCh38.105 filtered_snps.vcf > annotated.vcf\n\n# Summary stats\nbcftools stats annotated.vcf > vcf_stats.txt\n\n# View specific variant info\nbcftools query -f '%CHROM\\t%POS\\t%REF\\t%ALT\\t%QUAL\\t%INFO/ANN\\n' annotated.vcf | head", lang: "bash" }
+              ],
+              interpretation: "SNPs with QUAL>30 and depth>10 are typically reliable. Ti/Tv ratio ~2.0-2.1 for whole-genome human data indicates good call quality. SnpEff classifies impacts as HIGH (stop gain, frameshift), MODERATE (missense), LOW (synonymous), MODIFIER (intergenic). Focus on HIGH and MODERATE impact variants for disease studies.",
+              errors: [
+                { error: "GATK: Read groups missing from BAM", solution: "Add read groups with gatk AddOrReplaceReadGroups or Picard. Every read must have RG tag." },
+                { error: "GATK: Contig names don't match reference", solution: "Ensure BAM and reference use same chromosome naming (chr1 vs 1). Use samtools reheader to fix." },
+                { error: "Too many variants (>10M for human)", solution: "Likely includes many false positives. Apply stricter filters. Check if duplicate marking was done. Verify mapping quality." }
+              ]
+            }
+          },
+          {
+            id: "genome_annotation",
+            label: "Genome Annotation",
+            icon: "🏷️",
+            content: {
+              title: "🏷️ Genome Annotation",
+              what: "Genome annotation is the process of identifying the locations and functions of genes and other functional elements in a genome sequence. Structural annotation finds genes; functional annotation assigns biological roles.",
+              questions: [
+                "Where are the genes located in this genome?",
+                "What proteins do these genes encode?",
+                "What are the regulatory elements?",
+                "How do we distinguish coding from non-coding regions?"
+              ],
+              tools: [
+                { name: "Prokka", type: "tool", desc: "Rapid prokaryotic genome annotation" },
+                { name: "PGAP", type: "tool", desc: "NCBI Prokaryotic Genome Annotation Pipeline" },
+                { name: "Augustus", type: "tool", desc: "Eukaryotic gene prediction" },
+                { name: "GeneMark", type: "tool", desc: "Gene prediction using HMMs" },
+                { name: "Prodigal", type: "tool", desc: "Prokaryotic gene finding" },
+                { name: "eggNOG-mapper", type: "tool", desc: "Functional annotation" },
+                { name: "InterProScan", type: "tool", desc: "Protein domain annotation" }
+              ],
+              workflow: [
+                { step: 1, title: "Prokaryotic annotation with Prokka", cmd: "# Install Prokka\nconda install -c bioconda prokka\n\n# Run annotation\nprokka --outdir prokka_output \\\n  --prefix my_genome \\\n  --kingdom Bacteria \\\n  --cpus 8 \\\n  --mincontiglen 200 \\\n  scaffolds.fasta\n\n# Key output files:\n# .gff — annotation in GFF3 format\n# .gbk — GenBank format\n# .faa — protein sequences\n# .ffn — nucleotide gene sequences\n# .tsv — feature table\n# .txt — summary statistics", lang: "bash" },
+                { step: 2, title: "Functional annotation with eggNOG", cmd: "# Install eggNOG-mapper\nconda install -c bioconda eggnog-mapper\n\n# Download databases (first time only)\ndownload_eggnog_data.py\n\n# Run annotation\nemapper.py -i prokka_output/my_genome.faa \\\n  -o eggnog_results \\\n  --cpu 8 -m diamond", lang: "bash" },
+                { step: 3, title: "Check annotation stats", cmd: "# Count features\ngrep -c 'CDS' prokka_output/my_genome.gff\ngrep -c 'tRNA' prokka_output/my_genome.gff\ngrep -c 'rRNA' prokka_output/my_genome.gff\n\n# View summary\ncat prokka_output/my_genome.txt", lang: "bash" }
+              ]
+            }
+          }
+        ]
+      },
+
+      // ──────────────────────────────────────────────
+      //  3. TRANSCRIPTOMICS / NGS DATA ANALYSIS
+      // ──────────────────────────────────────────────
+      {
+        id: "transcriptomics",
+        label: "Transcriptomics & Gene Expression",
+        icon: "📈",
+        color: "green",
+        content: {
+          title: "📈 Transcriptomics & Gene Expression Analysis",
+          what: "Transcriptomics studies the complete set of RNA transcripts (transcriptome) produced by the genome under specific conditions. It reveals which genes are active, their expression levels, and how expression changes across conditions.",
+          questions: [
+            "Which genes are differentially expressed between conditions?",
+            "What biological pathways are affected?",
+            "How does gene expression change over time or treatment?",
+            "What alternative splicing events occur?",
+            "What are the key regulatory networks?"
+          ],
+          tools: [
+            { name: "DESeq2", type: "tool", desc: "Differential expression analysis (R/Bioconductor)" },
+            { name: "limma-voom", type: "tool", desc: "Linear models for microarray/RNA-seq" },
+            { name: "edgeR", type: "tool", desc: "Differential expression with empirical Bayes" },
+            { name: "HISAT2", type: "tool", desc: "Splice-aware RNA-seq read aligner" },
+            { name: "STAR", type: "tool", desc: "Fast RNA-seq aligner" },
+            { name: "featureCounts", type: "tool", desc: "Read counting for genes" },
+            { name: "HTSeq", type: "tool", desc: "Read counting" },
+            { name: "Trimmomatic", type: "tool", desc: "Read quality trimming" },
+            { name: "fastp", type: "tool", desc: "Fast all-in-one FASTQ preprocessor" },
+            { name: "clusterProfiler", type: "tool", desc: "GO/KEGG enrichment analysis (R)" },
+            { name: "GEO2R", type: "tool", desc: "Online DE analysis on GEO datasets" },
+            { name: "DEGEAR", type: "tool", desc: "DE analysis tool (lab-developed)" }
+          ]
+        },
+        children: [
+          {
+            id: "rnaseq_pipeline",
+            label: "RNA-seq Analysis Pipeline",
+            icon: "🔬",
+            content: {
+              title: "🔬 RNA-seq Analysis Pipeline",
+              what: "A complete RNA-seq analysis pipeline takes raw FASTQ files through quality control, alignment, quantification, normalization, differential expression testing, and functional enrichment analysis.",
+              questions: [
+                "What is the step-by-step process for RNA-seq analysis?",
+                "How do I go from raw reads to differentially expressed genes?",
+                "What quality metrics should I check at each step?"
+              ],
+              pipeline: [
+                { name: "QC", tool: "FastQC/fastp" },
+                { name: "Trim", tool: "Trimmomatic" },
+                { name: "Align", tool: "HISAT2/STAR" },
+                { name: "Count", tool: "featureCounts" },
+                { name: "Normalize", tool: "DESeq2" },
+                { name: "DE Analysis", tool: "DESeq2/limma" },
+                { name: "Enrichment", tool: "clusterProfiler" },
+                { name: "Visualize", tool: "R/ggplot2" }
+              ],
+              workflow: [
+                { step: 1, title: "Quality Control with fastp", cmd: "# Install tools\nconda install -c bioconda fastp hisat2 samtools subread\n\n# Run fastp (QC + trimming in one step)\nfor sample in sample1 sample2 sample3; do\n  fastp \\\n    -i ${sample}_R1.fastq.gz \\\n    -I ${sample}_R2.fastq.gz \\\n    -o ${sample}_trimmed_R1.fastq.gz \\\n    -O ${sample}_trimmed_R2.fastq.gz \\\n    --html ${sample}_fastp.html \\\n    --json ${sample}_fastp.json \\\n    --thread 4 \\\n    --qualified_quality_phred 20 \\\n    --length_required 36\ndone\n\n# Alternative: Trimmomatic\ntrimmomatic PE -threads 4 \\\n  sample1_R1.fastq.gz sample1_R2.fastq.gz \\\n  sample1_trim_R1.fastq.gz sample1_unpaired_R1.fastq.gz \\\n  sample1_trim_R2.fastq.gz sample1_unpaired_R2.fastq.gz \\\n  ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 \\\n  LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36", lang: "bash" },
+                { step: 2, title: "Build HISAT2 index and align", cmd: "# Download reference genome and annotation\n# Example: Human GRCh38\nwget https://genome-idx.s3.amazonaws.com/hisat2/grch38.tar.gz\ntar -xzf grch38.tar.gz\n\n# Or build custom index\nhisat2-build reference.fasta genome_index\n\n# Align reads\nfor sample in sample1 sample2 sample3; do\n  hisat2 -x genome_index \\\n    -1 ${sample}_trimmed_R1.fastq.gz \\\n    -2 ${sample}_trimmed_R2.fastq.gz \\\n    -S ${sample}.sam \\\n    --dta \\\n    -p 8 \\\n    --summary-file ${sample}_alignment_summary.txt\n\n  # Convert to sorted BAM\n  samtools sort -@ 4 ${sample}.sam -o ${sample}.bam\n  samtools index ${sample}.bam\n  rm ${sample}.sam\ndone", lang: "bash" },
+                { step: 3, title: "Count reads with featureCounts", cmd: "# Count reads per gene\nfeatureCounts \\\n  -a annotation.gtf \\\n  -o counts.txt \\\n  -T 8 \\\n  -p --countReadPairs \\\n  -s 2 \\\n  sample1.bam sample2.bam sample3.bam \\\n  control1.bam control2.bam control3.bam\n\n# -s 0: unstranded\n# -s 1: stranded\n# -s 2: reverse stranded (most common Illumina)\n\n# Check assignment summary\ncat counts.txt.summary", lang: "bash" },
+                { step: 4, title: "Differential Expression with DESeq2 (R)", cmd: "# ===== R Script: deseq2_analysis.R =====\n\n# Install packages (first time)\nif (!requireNamespace(\"BiocManager\", quietly = TRUE))\n  install.packages(\"BiocManager\")\nBiocManager::install(c(\"DESeq2\", \"clusterProfiler\",\n  \"org.Hs.eg.db\", \"enrichplot\", \"AnnotationDbi\"))\ninstall.packages(c(\"ggplot2\", \"pheatmap\", \"ggrepel\"))\n\n# Load libraries\nlibrary(DESeq2)\nlibrary(ggplot2)\nlibrary(pheatmap)\nlibrary(ggrepel)\n\n# Read count matrix\ncounts_data <- read.table(\"counts.txt\",\n  header = TRUE, row.names = 1, skip = 1)\n# Keep only count columns (remove Chr, Start, End, Strand, Length)\ncounts_data <- counts_data[, 6:ncol(counts_data)]\n\n# Clean column names\ncolnames(counts_data) <- gsub(\"\\\\.bam$\", \"\", colnames(counts_data))\n\n# Create sample info\ncondition <- factor(c(rep(\"treatment\", 3), rep(\"control\", 3)))\ncoldata <- data.frame(\n  row.names = colnames(counts_data),\n  condition = condition\n)\n\n# Create DESeq2 dataset\ndds <- DESeqDataSetFromMatrix(\n  countData = round(counts_data),\n  colData = coldata,\n  design = ~ condition\n)\n\n# Pre-filter low count genes\nkeep <- rowSums(counts(dds)) >= 10\ndds <- dds[keep, ]\n\n# Run DESeq2\ndds <- DESeq(dds)\nres <- results(dds, contrast = c(\"condition\", \"treatment\", \"control\"),\n  alpha = 0.05)\n\n# Summary\nsummary(res)\n\n# Get significant results\nres_sig <- subset(as.data.frame(res),\n  padj < 0.05 & abs(log2FoldChange) > 1)\nres_sig <- res_sig[order(res_sig$padj), ]\n\n# Save results\nwrite.csv(as.data.frame(res), \"deseq2_all_results.csv\")\nwrite.csv(res_sig, \"deseq2_significant_results.csv\")\n\ncat(\"Total DEGs (padj<0.05, |LFC|>1):\", nrow(res_sig), \"\\n\")\ncat(\"Upregulated:\", sum(res_sig$log2FoldChange > 0), \"\\n\")\ncat(\"Downregulated:\", sum(res_sig$log2FoldChange < 0), \"\\n\")", lang: "r" },
+                { step: 5, title: "Visualization", cmd: "# ===== Continuing R Script =====\n\n# --- MA Plot ---\npng(\"MA_plot.png\", width=800, height=600)\nplotMA(res, ylim=c(-5,5), main=\"MA Plot\")\ndev.off()\n\n# --- Volcano Plot ---\nres_df <- as.data.frame(res)\nres_df$significant <- ifelse(\n  res_df$padj < 0.05 & abs(res_df$log2FoldChange) > 1,\n  ifelse(res_df$log2FoldChange > 1, \"Up\", \"Down\"), \"NS\")\n\npng(\"volcano_plot.png\", width=900, height=700)\nggplot(res_df, aes(x=log2FoldChange, y=-log10(pvalue),\n  color=significant)) +\n  geom_point(alpha=0.6, size=1.5) +\n  scale_color_manual(values=c(\"Down\"=\"#3498db\",\n    \"NS\"=\"grey70\", \"Up\"=\"#e74c3c\")) +\n  theme_minimal(base_size=14) +\n  geom_vline(xintercept=c(-1,1), linetype=\"dashed\", color=\"grey40\") +\n  geom_hline(yintercept=-log10(0.05), linetype=\"dashed\", color=\"grey40\") +\n  labs(title=\"Volcano Plot\",\n    x=\"Log2 Fold Change\", y=\"-Log10 P-value\",\n    color=\"Significance\") +\n  theme(legend.position=\"top\")\ndev.off()\n\n# --- Heatmap of top 50 DEGs ---\nvsd <- vst(dds, blind=FALSE)\ntop50 <- head(order(res$padj), 50)\nmat <- assay(vsd)[top50, ]\nmat <- mat - rowMeans(mat)  # center\n\npng(\"heatmap_top50.png\", width=800, height=1000)\npheatmap(mat, scale=\"row\",\n  annotation_col=coldata,\n  show_rownames=TRUE,\n  fontsize_row=8,\n  main=\"Top 50 Differentially Expressed Genes\")\ndev.off()\n\n# --- PCA Plot ---\npng(\"pca_plot.png\", width=800, height=600)\nplotPCA(vsd, intgroup=\"condition\") +\n  theme_minimal(base_size=14) +\n  ggtitle(\"PCA of Samples\")\ndev.off()", lang: "r" },
+                { step: 6, title: "GO & Pathway Enrichment (clusterProfiler)", cmd: "# ===== Continuing R Script =====\n\nlibrary(clusterProfiler)\nlibrary(org.Hs.eg.db)  # Human; use org.Mm.eg.db for mouse\nlibrary(enrichplot)\n\n# Get gene list\ngene_list <- res_sig$log2FoldChange\nnames(gene_list) <- rownames(res_sig)\n\n# Convert gene symbols to Entrez IDs\ngene_ids <- bitr(rownames(res_sig),\n  fromType = \"ENSEMBL\",  # or \"SYMBOL\"\n  toType = \"ENTREZID\",\n  OrgDb = org.Hs.eg.db)\n\n# GO Enrichment (Biological Process)\ngo_bp <- enrichGO(\n  gene = gene_ids$ENTREZID,\n  OrgDb = org.Hs.eg.db,\n  ont = \"BP\",\n  pAdjustMethod = \"BH\",\n  pvalueCutoff = 0.05,\n  qvalueCutoff = 0.05,\n  readable = TRUE\n)\n\n# KEGG Pathway Enrichment\nkegg <- enrichKEGG(\n  gene = gene_ids$ENTREZID,\n  organism = \"hsa\",  # hsa=human, mmu=mouse\n  pvalueCutoff = 0.05\n)\n\n# Save results\nwrite.csv(as.data.frame(go_bp), \"GO_BP_enrichment.csv\")\nwrite.csv(as.data.frame(kegg), \"KEGG_enrichment.csv\")\n\n# Visualize\npng(\"GO_dotplot.png\", width=900, height=700)\ndotplot(go_bp, showCategory=20) + ggtitle(\"GO Biological Process\")\ndev.off()\n\npng(\"KEGG_dotplot.png\", width=900, height=700)\ndotplot(kegg, showCategory=20) + ggtitle(\"KEGG Pathways\")\ndev.off()\n\npng(\"GO_barplot.png\", width=900, height=700)\nbarplot(go_bp, showCategory=15) + ggtitle(\"GO Enrichment\")\ndev.off()\n\n# Gene-concept network\npng(\"cnetplot.png\", width=1000, height=800)\ncnetplot(go_bp, categorySize=\"pvalue\", showCategory=5)\ndev.off()", lang: "r" }
+              ],
+              interpretation: "DESeq2 uses negative binomial model. Genes with padj < 0.05 and |log2FC| > 1 are typically considered significant. In volcano plots, genes in upper corners are most significant. PCA should show clear separation between conditions. GO enrichment reveals which biological processes are affected — look for terms with low q-values and high gene counts.",
+              errors: [
+                { error: "DESeq2: every gene has 0 counts", solution: "Check that featureCounts used correct GTF annotation matching your reference. Verify BAM files contain mapped reads (samtools flagstat). Check -s strandedness parameter." },
+                { error: "featureCounts: 0% assignment rate", solution: "Most common cause: wrong strandedness (-s parameter). Try -s 0, -s 1, and -s 2. Also check GTF matches reference genome version." },
+                { error: "clusterProfiler: no enrichment found", solution: "Ensure gene IDs match database (ENSEMBL vs SYMBOL vs ENTREZID). Try relaxing thresholds. Check organism database is correct." },
+                { error: "HISAT2: 0% alignment rate", solution: "Verify genome index matches reads species. Check FASTQ quality. Ensure index was built correctly." }
+              ]
+            }
+          },
+          {
+            id: "geo_analysis",
+            label: "GEO Data Analysis",
+            icon: "🌐",
+            content: {
+              title: "🌐 GEO Data Analysis (Microarray & RNA-seq)",
+              what: "NCBI Gene Expression Omnibus (GEO) is a public repository of gene expression data. GEO2R allows online differential expression analysis. For more control, download data and analyze with limma or DESeq2.",
+              questions: [
+                "How do I find and analyze published expression datasets?",
+                "How do I use GEO2R for quick DE analysis?",
+                "How do I download and re-analyze GEO data locally?"
+              ],
+              tools: [
+                { name: "GEO2R", type: "tool", desc: "Online DE analysis at NCBI GEO" },
+                { name: "GEOquery", type: "tool", desc: "R package to download GEO data" },
+                { name: "limma", type: "tool", desc: "Linear models for microarray/RNA-seq" },
+                { name: "DEGEAR", type: "tool", desc: "Lab-developed DE analysis tool" },
+                { name: "affy", type: "tool", desc: "Affymetrix microarray preprocessing" }
+              ],
+              workflow: [
+                { step: 1, title: "Using GEO2R (Online — Quick)", cmd: "# Step-by-step GEO2R usage:\n# 1. Go to https://www.ncbi.nlm.nih.gov/geo/\n# 2. Search for your dataset (e.g., GSE12345)\n# 3. Click 'Analyze with GEO2R'\n# 4. Define groups (e.g., 'Control' vs 'Treatment')\n# 5. Assign samples to groups\n# 6. Click 'Top 250' to get results\n# 7. Download full results table\n# 8. View auto-generated R script for reproducibility", lang: "bash" },
+                { step: 2, title: "Download and analyze GEO data in R", cmd: "# Install packages\nBiocManager::install(c(\"GEOquery\", \"limma\", \"pheatmap\"))\n\nlibrary(GEOquery)\nlibrary(limma)\nlibrary(ggplot2)\nlibrary(pheatmap)\n\n# Download GEO dataset\ngse <- getGEO(\"GSE12345\", GSEMatrix = TRUE)\ndata <- gse[[1]]\n\n# Get expression matrix\nexpr_mat <- exprs(data)\n\n# Get phenotype/sample info\npheno <- pData(data)\n\n# Check what columns are available\ncolnames(pheno)\nhead(pheno)\n\n# Define groups (adapt column name to your dataset)\ngroup <- factor(pheno$`condition:ch1`)\ndesign <- model.matrix(~ 0 + group)\ncolnames(design) <- levels(group)\n\n# Fit linear model (limma)\nfit <- lmFit(expr_mat, design)\ncontrast.matrix <- makeContrasts(\n  Treatment_vs_Control = treatment - control,\n  levels = design)\nfit2 <- contrasts.fit(fit, contrast.matrix)\nfit2 <- eBayes(fit2)\n\n# Get results\nresults <- topTable(fit2, number = Inf, sort.by = \"P\")\nresults_sig <- subset(results,\n  adj.P.Val < 0.05 & abs(logFC) > 1)\n\nwrite.csv(results, \"limma_all_results.csv\")\nwrite.csv(results_sig, \"limma_significant.csv\")\n\ncat(\"Significant DEGs:\", nrow(results_sig), \"\\n\")", lang: "r" }
+              ]
+            }
+          },
+          {
+            id: "transcriptome_assembly",
+            label: "Transcriptome Assembly",
+            icon: "🧩",
+            content: {
+              title: "🧩 Transcriptome Assembly (de novo)",
+              what: "Transcriptome assembly reconstructs full-length transcript sequences from RNA-seq reads. Useful for organisms without a reference genome. Trinity is the standard tool for de novo RNA-seq assembly.",
+              questions: [
+                "What transcripts are expressed in an organism without a reference genome?",
+                "How do we reconstruct full-length mRNA from short reads?"
+              ],
+              tools: [
+                { name: "Trinity", type: "tool", desc: "De novo RNA-seq assembler" },
+                { name: "Trans-ABySS", type: "tool", desc: "Alternative transcriptome assembler" },
+                { name: "RSEM", type: "tool", desc: "Transcript quantification" },
+                { name: "Salmon", type: "tool", desc: "Fast transcript quantification" },
+                { name: "TransDecoder", type: "tool", desc: "Identify coding regions in transcripts" },
+                { name: "Trinotate", type: "tool", desc: "Transcriptome functional annotation" }
+              ],
+              workflow: [
+                { step: 1, title: "De novo assembly with Trinity", cmd: "# Install Trinity\nconda install -c bioconda trinity\n\n# Run assembly (requires significant memory ~1GB per 1M reads)\nTrinity --seqType fq \\\n  --left trimmed_R1.fastq.gz \\\n  --right trimmed_R2.fastq.gz \\\n  --CPU 8 --max_memory 50G \\\n  --output trinity_output\n\n# Assembly stats\nTrinityStats.pl trinity_output/Trinity.fasta", lang: "bash" },
+                { step: 2, title: "Assembly quality and quantification", cmd: "# Check completeness with BUSCO\nbusco -i trinity_output/Trinity.fasta \\\n  -l metazoa_odb10 -o busco_transcriptome \\\n  -m transcriptome -c 4\n\n# Quantify with Salmon\nsalmon index -t trinity_output/Trinity.fasta -i trinity_index\nsalmon quant -i trinity_index \\\n  -l A -1 trimmed_R1.fastq.gz -2 trimmed_R2.fastq.gz \\\n  -o salmon_quant -p 8", lang: "bash" }
+              ]
+            }
+          }
+        ]
+      },
+
+      // ──────────────────────────────────────────────
+      //  4. PHYLOGENETICS & PHYLOGENOMICS
+      // ──────────────────────────────────────────────
+      {
+        id: "phylogenetics",
+        label: "Phylogenetics & Phylogenomics",
+        icon: "🌳",
+        color: "orange",
+        content: {
+          title: "🌳 Phylogenetics & Phylogenomics",
+          what: "Phylogenetics is the study of evolutionary relationships among organisms using molecular data (DNA, RNA, protein sequences). Phylogenomics extends this to whole-genome scale analysis. Results are depicted as phylogenetic trees.",
+          questions: [
+            "How are organisms evolutionarily related?",
+            "When did species diverge (molecular dating)?",
+            "Did horizontal gene transfer (HGT) occur?",
+            "What is the evolutionary history of a gene family?",
+            "How do we classify new organisms?"
+          ],
+          tools: [
+            { name: "MEGA", type: "tool", desc: "Molecular Evolutionary Genetics Analysis — GUI-based" },
+            { name: "RAxML", type: "tool", desc: "Maximum Likelihood phylogenetics (v8 & RAxML-NG)" },
+            { name: "IQ-TREE", type: "tool", desc: "Fast ML tree with model selection" },
+            { name: "MrBayes", type: "tool", desc: "Bayesian phylogenetic inference" },
+            { name: "BEAST2", type: "tool", desc: "Bayesian molecular dating" },
+            { name: "FigTree", type: "tool", desc: "Tree visualization" },
+            { name: "ape (R)", type: "tool", desc: "R package for phylogenetics" },
+            { name: "ggtree (R)", type: "tool", desc: "Tree visualization in R/ggplot2" },
+            { name: "HGTPhyloDetect", type: "tool", desc: "Horizontal gene transfer detection" },
+            { name: "NCBI Genome Workbench", type: "tool", desc: "Integrated genome analysis viewer" }
+          ]
+        },
+        children: [
+          {
+            id: "tree_construction",
+            label: "Tree Construction Methods",
+            icon: "🔨",
+            content: {
+              title: "🔨 Phylogenetic Tree Construction",
+              what: "Phylogenetic trees can be built using distance-based methods (UPGMA, Neighbor-Joining), maximum parsimony, maximum likelihood (RAxML, IQ-TREE), or Bayesian inference (MrBayes, BEAST).",
+              questions: [
+                "Which tree-building method is most appropriate for my data?",
+                "How do I assess tree reliability (bootstrap)?",
+                "What substitution model should I use?"
+              ],
+              algorithms: [
+                { name: "UPGMA", desc: "Unweighted Pair Group Method with Arithmetic Mean — assumes molecular clock (rarely appropriate)." },
+                { name: "Neighbor-Joining (NJ)", desc: "Distance-based method that doesn't assume a molecular clock. Fast, good for initial analysis." },
+                { name: "Maximum Parsimony", desc: "Finds tree requiring fewest evolutionary changes." },
+                { name: "Maximum Likelihood (ML)", desc: "Finds tree that maximizes probability of observed data given a substitution model. Gold standard." },
+                { name: "Bayesian Inference", desc: "Uses MCMC to sample tree space and estimate posterior probabilities. Provides support values directly." }
+              ],
+              math: [
+                "Jukes-Cantor distance: d = -¾ ln(1 - 4p/3) where p = proportion of different sites",
+                "Kimura 2-parameter: d = -½ ln(1-2P-Q) - ¼ ln(1-2Q) where P=transitions, Q=transversions",
+                "ML: L(T,θ) = P(D|T,θ) — find tree T and parameters θ that maximize likelihood of data D",
+                "Bootstrap: resample alignment columns with replacement, rebuild tree, report % support"
+              ],
+              workflow: [
+                { step: 1, title: "Prepare alignment for phylogeny", cmd: "# First, create MSA of homologous sequences\nmafft --auto sequences.fasta > aligned.fasta\n\n# Trim poorly aligned regions\nconda install -c bioconda trimal\ntrimal -in aligned.fasta -out trimmed.fasta -automated1\n\n# Convert formats if needed\nconda install -c bioconda goalign\ngoalign reformat phylip -i trimmed.fasta -o trimmed.phy", lang: "bash" },
+                { step: 2, title: "Build tree with IQ-TREE (recommended)", cmd: "# Install IQ-TREE\nconda install -c bioconda iqtree\n\n# Run with automatic model selection + bootstrap\niqtree -s trimmed.fasta \\\n  -m MFP \\\n  -bb 1000 \\\n  -alrt 1000 \\\n  -nt AUTO \\\n  -pre phylo_output\n\n# MFP = ModelFinder Plus (auto model selection)\n# -bb 1000 = 1000 ultrafast bootstrap replicates\n# -alrt 1000 = SH-aLRT test replicates\n\n# Output files:\n# phylo_output.treefile — best ML tree (Newick format)\n# phylo_output.iqtree — full report with model info\n# phylo_output.log — run log", lang: "bash" },
+                { step: 3, title: "Build tree with RAxML", cmd: "# Install RAxML-NG\nconda install -c bioconda raxml-ng\n\n# Run RAxML-NG\nraxml-ng --all \\\n  --msa trimmed.fasta \\\n  --model GTR+G \\\n  --bs-trees 100 \\\n  --threads 4 \\\n  --prefix raxml_output\n\n# Classic RAxML v8 syntax (if using v8)\n# raxmlHPC -f a -x 12345 -p 12345 -# 100 \\\n#   -s trimmed.phy -n output -m GTRGAMMA", lang: "bash" },
+                { step: 4, title: "Phylogenetics in R with ape", cmd: "# ===== R Script =====\ninstall.packages(\"ape\")\ninstall.packages(\"phangorn\")\nBiocManager::install(\"ggtree\")\n\nlibrary(ape)\nlibrary(phangorn)\nlibrary(ggtree)\n\n# Read alignment\naln <- read.phyDat(\"trimmed.fasta\", format=\"fasta\", type=\"DNA\")\n\n# Distance-based tree (NJ with Kimura 2-parameter)\ndist_mat <- dist.dna(as.DNAbin(aln), model=\"K80\")  # Kimura 2-parameter\nnj_tree <- nj(dist_mat)\n\n# Bootstrap NJ tree\nbs_nj <- boot.phylo(nj_tree, as.DNAbin(aln),\n  function(x) nj(dist.dna(x, model=\"K80\")),\n  B = 1000, quiet = TRUE)\n\n# Plot\npng(\"nj_tree.png\", width=800, height=600)\nplot(nj_tree, main=\"Neighbor-Joining Tree (K2P)\")\nnodelabels(bs_nj, cex=0.7, bg=\"lightyellow\")\nadd.scale.bar()\ndev.off()\n\n# Maximum Likelihood with phangorn\nfit <- pml(nj_tree, data=aln)\nfit_gtr <- optim.pml(fit, model=\"GTR\", optGamma=TRUE,\n  optInv=TRUE, rearrangement=\"stochastic\")\n\n# Bootstrap ML\nbs_ml <- bootstrap.pml(fit_gtr, bs=100,\n  optNni=TRUE, multicore=TRUE, mc.cores=4)\n\n# Plot ML tree with ggtree\nml_tree <- fit_gtr$tree\npng(\"ml_tree.png\", width=800, height=600)\nggtree(ml_tree) +\n  geom_tiplab(size=3) +\n  geom_nodelab(aes(label=label), size=2, hjust=-0.1) +\n  theme_tree2() +\n  ggtitle(\"Maximum Likelihood Tree (GTR+G+I)\")\ndev.off()", lang: "r" },
+                { step: 5, title: "Visualize tree with FigTree or iTOL", cmd: "# FigTree (desktop application)\n# Download: http://tree.bio.ed.ac.uk/software/figtree/\n# Open .treefile in FigTree\n\n# iTOL (online)\n# Upload .treefile to https://itol.embl.de/\n# Customize appearance, add annotations\n\n# ETE Toolkit (Python)\npip install ete3\npython3 -c \"\nfrom ete3 import Tree\nt = Tree('phylo_output.treefile')\nprint(t.get_ascii(show_internal=True))\n\"", lang: "bash" }
+              ],
+              interpretation: "Bootstrap values ≥70% (ML) or posterior probabilities ≥0.95 (Bayesian) indicate well-supported nodes. Use IQ-TREE's ModelFinder to select the best substitution model (don't just assume GTR+G). Long branches may indicate rapid evolution, sequencing errors, or long-branch attraction artifacts. Root the tree with an outgroup for proper interpretation.",
+              errors: [
+                { error: "IQ-TREE: Alignment has too many identical sequences", solution: "Remove duplicate/identical sequences. Use CD-HIT to reduce redundancy: cd-hit -i sequences.fasta -o unique.fasta -c 0.99" },
+                { error: "RAxML: Sequence names contain illegal characters", solution: "Remove spaces, colons, semicolons, parentheses from sequence names. Use sed: sed 's/[^a-zA-Z0-9_]/_/g'" },
+                { error: "Very long branches in tree", solution: "Could be long-branch attraction. Try removing problematic taxon, using better models, or Bayesian methods. Verify sequences are correct (not chimeric)." }
+              ]
+            }
+          },
+          {
+            id: "molecular_dating",
+            label: "Molecular Dating",
+            icon: "⏰",
+            content: {
+              title: "⏰ Molecular Dating & Divergence Times",
+              what: "Molecular dating estimates when lineages diverged using molecular clock models. It combines phylogenetic analysis with fossil calibrations or known divergence times to put absolute time on evolutionary trees.",
+              questions: [
+                "When did two species diverge?",
+                "What is the rate of molecular evolution?",
+                "How old is a particular gene duplication event?"
+              ],
+              tools: [
+                { name: "BEAST2", type: "tool", desc: "Bayesian Evolutionary Analysis by Sampling Trees" },
+                { name: "MEGA (RelTime)", type: "tool", desc: "Relative time estimation in MEGA" },
+                { name: "r8s", type: "tool", desc: "Rate smoothing for divergence time estimation" },
+                { name: "MCMCTree (PAML)", type: "tool", desc: "Bayesian dating in PAML package" }
+              ],
+              workflow: [
+                { step: 1, title: "Molecular dating with MEGA", cmd: "# MEGA is GUI-based. Steps:\n# 1. Open MEGA software\n# 2. Load aligned sequences (File > Open Alignment)\n# 3. Go to Phylogeny > Construct Timetree\n# 4. Select calibration points (known divergence times)\n# 5. Choose substitution model (e.g., Kimura 2-parameter)\n# 6. Set molecular clock type (Strict or Relaxed)\n# 7. Run analysis and export timetree\n\n# For command-line alternative, use BEAST2:\nconda install -c bioconda beast2", lang: "bash" }
+              ]
+            }
+          },
+          {
+            id: "hgt_detection",
+            label: "Horizontal Gene Transfer",
+            icon: "🔀",
+            content: {
+              title: "🔀 Horizontal Gene Transfer (HGT) Detection",
+              what: "HGT is the transfer of genetic material between organisms outside of vertical (parent to offspring) inheritance. Common in prokaryotes. Detection methods include phylogenetic incongruence, compositional analysis, and comparative genomics.",
+              questions: [
+                "Has a gene been acquired from a distant organism?",
+                "What genes have undergone horizontal transfer?",
+                "How does HGT affect phylogenetic reconstruction?"
+              ],
+              tools: [
+                { name: "HGTPhyloDetect", type: "tool", desc: "Phylogenetic approach to HGT detection" },
+                { name: "IslandViewer", type: "tool", desc: "Web tool for genomic island prediction" },
+                { name: "Alien_hunter", type: "tool", desc: "Compositional bias-based HGT detection" },
+                { name: "T-REX", type: "tool", desc: "Tree comparison for HGT inference" }
+              ],
+              workflow: [
+                { step: 1, title: "HGT detection with HGTPhyloDetect", cmd: "# Install HGTPhyloDetect\npip install HGTPhyloDetect\n\n# Or clone from GitHub\ngit clone https://github.com/user/HGTPhyloDetect.git\ncd HGTPhyloDetect\npython setup.py install\n\n# Run analysis following tool documentation\n# Generally involves:\n# 1. Building gene trees for each gene family\n# 2. Comparing gene trees with species tree\n# 3. Identifying topological incongruence\n# 4. Statistical testing for HGT events", lang: "bash" },
+                { step: 2, title: "Compositional analysis for HGT", cmd: "# Genes acquired by HGT often have different\n# GC content and codon usage than the host genome\n\n# Calculate GC content along genome\n# Using Biopython\npython3 << 'EOF'\nfrom Bio import SeqIO\nimport numpy as np\n\ndef gc_content(seq):\n    gc = sum(1 for b in seq.upper() if b in 'GC')\n    return gc / len(seq) * 100\n\ngenome = SeqIO.read('genome.fasta', 'fasta')\nwindow = 1000\nstep = 500\n\nfor i in range(0, len(genome.seq) - window, step):\n    subseq = genome.seq[i:i+window]\n    gc = gc_content(str(subseq))\n    print(f'{i}\\t{gc:.2f}')\nEOF\n\n# Regions with significantly different GC content\n# may have been acquired by HGT", lang: "bash" }
+              ]
+            }
+          }
+        ]
+      },
+
+      // ──────────────────────────────────────────────
+      //  5. METAGENOMICS & MICROBIAL ANALYSIS
+      // ──────────────────────────────────────────────
+      {
+        id: "metagenomics",
+        label: "Metagenomics & Microbial Analysis",
+        icon: "🦠",
+        color: "pink",
+        content: {
+          title: "🦠 Metagenomics & Microbial Analysis",
+          what: "Metagenomics studies genetic material recovered directly from environmental or clinical samples. It enables analysis of microbial community composition, diversity, and function without culturing individual organisms.",
+          questions: [
+            "What microorganisms are present in a sample?",
+            "How diverse is the microbial community?",
+            "How do communities differ between conditions?",
+            "What metabolic functions are present in the community?",
+            "Are there pathogenic organisms present?"
+          ],
+          tools: [
+            { name: "QIIME2", type: "tool", desc: "Comprehensive microbiome analysis platform" },
+            { name: "mothur", type: "tool", desc: "Microbial community analysis" },
+            { name: "Kraken2", type: "tool", desc: "Taxonomic classification" },
+            { name: "MetaPhlAn", type: "tool", desc: "Metagenomic profiling" },
+            { name: "HUMAnN", type: "tool", desc: "Functional profiling of metagenomes" },
+            { name: "phyloseq (R)", type: "tool", desc: "Microbiome data analysis in R" },
+            { name: "DADA2", type: "tool", desc: "ASV inference from amplicon data" }
+          ]
+        },
+        children: [
+          {
+            id: "amplicon_16s",
+            label: "16S rRNA Amplicon Analysis",
+            icon: "🔍",
+            content: {
+              title: "🔍 16S rRNA Amplicon Analysis",
+              what: "16S rRNA gene sequencing targets the bacterial 16S ribosomal RNA gene to identify and classify bacteria in a sample. Variable regions (V3-V4 most common) provide taxonomic resolution.",
+              questions: [
+                "What bacterial species are present?",
+                "How diverse is the bacterial community (alpha/beta diversity)?",
+                "Which taxa differ between treatment groups?"
+              ],
+              workflow: [
+                { step: 1, title: "QIIME2 Analysis Pipeline", cmd: "# Install QIIME2\nconda install -c qiime2 qiime2\n# Or use official install: https://docs.qiime2.org/\n\n# Import data\nqiime tools import \\\n  --type 'SampleData[PairedEndSequencesWithQuality]' \\\n  --input-path manifest.tsv \\\n  --output-path demux.qza \\\n  --input-format PairedEndFastqManifestPhred33V2\n\n# Visualize quality\nqiime demux summarize \\\n  --i-data demux.qza \\\n  --o-visualization demux.qzv", lang: "bash" },
+                { step: 2, title: "Denoise with DADA2 (in QIIME2)", cmd: "# DADA2 denoising\nqiime dada2 denoise-paired \\\n  --i-demultiplexed-seqs demux.qza \\\n  --p-trim-left-f 17 \\\n  --p-trim-left-r 21 \\\n  --p-trunc-len-f 250 \\\n  --p-trunc-len-r 200 \\\n  --p-n-threads 8 \\\n  --o-table table.qza \\\n  --o-representative-sequences rep-seqs.qza \\\n  --o-denoising-stats stats.qza\n\n# View denoising stats\nqiime metadata tabulate \\\n  --m-input-file stats.qza \\\n  --o-visualization stats.qzv", lang: "bash" },
+                { step: 3, title: "Taxonomy classification", cmd: "# Download pre-trained classifier (Silva or Greengenes2)\n# Silva 138 V3-V4 classifier:\nwget https://data.qiime2.org/2024.2/common/silva-138-99-nb-classifier.qza\n\n# Classify\nqiime feature-classifier classify-sklearn \\\n  --i-classifier silva-138-99-nb-classifier.qza \\\n  --i-reads rep-seqs.qza \\\n  --o-classification taxonomy.qza\n\n# Visualize taxonomy barplot\nqiime taxa barplot \\\n  --i-table table.qza \\\n  --i-taxonomy taxonomy.qza \\\n  --m-metadata-file metadata.tsv \\\n  --o-visualization taxa-barplot.qzv", lang: "bash" },
+                { step: 4, title: "Diversity analysis", cmd: "# Build phylogenetic tree\nqiime phylogeny align-to-tree-mafft-fasttree \\\n  --i-sequences rep-seqs.qza \\\n  --o-alignment aligned-rep-seqs.qza \\\n  --o-masked-alignment masked-aligned.qza \\\n  --o-tree unrooted-tree.qza \\\n  --o-rooted-tree rooted-tree.qza\n\n# Core diversity analysis\nqiime diversity core-metrics-phylogenetic \\\n  --i-phylogeny rooted-tree.qza \\\n  --i-table table.qza \\\n  --p-sampling-depth 10000 \\\n  --m-metadata-file metadata.tsv \\\n  --output-dir diversity-results\n\n# Alpha diversity significance\nqiime diversity alpha-group-significance \\\n  --i-alpha-diversity diversity-results/shannon_vector.qza \\\n  --m-metadata-file metadata.tsv \\\n  --o-visualization shannon-significance.qzv\n\n# Beta diversity significance (PERMANOVA)\nqiime diversity beta-group-significance \\\n  --i-distance-matrix diversity-results/unweighted_unifrac_distance_matrix.qza \\\n  --m-metadata-column treatment \\\n  --m-metadata-file metadata.tsv \\\n  --o-visualization permanova.qzv", lang: "bash" }
+              ],
+              interpretation: "Alpha diversity (Shannon, Chao1, observed features) measures within-sample diversity. Beta diversity (UniFrac, Bray-Curtis) measures between-sample differences — visualize with PCoA/NMDS. PERMANOVA p<0.05 indicates significant community differences. Taxonomy barplots show relative abundance at different taxonomic levels. Rarefaction curves should plateau to ensure sufficient sequencing depth.",
+              errors: [
+                { error: "QIIME2: No sequences passed the filter", solution: "Adjust --p-trunc-len to where quality scores are still >20. Check quality plots first. Ensure trim parameters don't remove too much." },
+                { error: "DADA2: Too few reads remain after filtering", solution: "Relax quality parameters. Check if primers are properly trimmed. Verify input format matches expected format." }
+              ]
+            }
+          },
+          {
+            id: "shotgun_metagenomics",
+            label: "Shotgun Metagenomics",
+            icon: "💥",
+            content: {
+              title: "💥 Shotgun Metagenomics",
+              what: "Shotgun metagenomics sequences all DNA in a sample (not just 16S), providing both taxonomic and functional information at higher resolution.",
+              questions: [
+                "What organisms are present at species/strain level?",
+                "What functional genes and pathways are in the community?",
+                "Are antimicrobial resistance genes present?"
+              ],
+              tools: [
+                { name: "Kraken2", type: "tool", desc: "Fast taxonomic classification using k-mers" },
+                { name: "MetaPhlAn4", type: "tool", desc: "Marker-based taxonomic profiling" },
+                { name: "HUMAnN3", type: "tool", desc: "Functional profiling — pathways, gene families" },
+                { name: "MEGAHIT", type: "tool", desc: "Metagenomic assembly" },
+                { name: "MaxBin2", type: "tool", desc: "Metagenomic binning" },
+                { name: "CheckM", type: "tool", desc: "Bin quality assessment" }
+              ],
+              workflow: [
+                { step: 1, title: "Taxonomic profiling with Kraken2", cmd: "# Install\nconda install -c bioconda kraken2 bracken\n\n# Download database (8GB standard)\nkraken2-build --standard --db kraken2_db --threads 8\n\n# Run classification\nkraken2 --db kraken2_db \\\n  --paired reads_R1.fastq.gz reads_R2.fastq.gz \\\n  --output kraken_output.txt \\\n  --report kraken_report.txt \\\n  --threads 8\n\n# Abundance estimation with Bracken\nbracken -d kraken2_db \\\n  -i kraken_report.txt \\\n  -o bracken_output.txt \\\n  -r 150 -l S", lang: "bash" },
+                { step: 2, title: "Functional profiling with HUMAnN3", cmd: "conda install -c bioconda humann\n\n# Download databases\nhumann_databases --download chocophlan full /path/to/databases\nhumann_databases --download uniref uniref90_diamond /path/to/databases\n\n# Run HUMAnN3\nhumann --input reads.fastq.gz \\\n  --output humann_output/ \\\n  --threads 8\n\n# Output:\n# *_genefamilies.tsv — gene family abundances\n# *_pathabundance.tsv — pathway abundances\n# *_pathcoverage.tsv — pathway coverage", lang: "bash" }
+              ]
+            }
+          }
+        ]
+      },
+
+      // ──────────────────────────────────────────────
+      //  6. COMPARATIVE GENOMICS
+      // ──────────────────────────────────────────────
+      {
+        id: "comparative_genomics",
+        label: "Comparative Genomics",
+        icon: "🔄",
+        color: "red",
+        content: {
+          title: "🔄 Comparative Genomics",
+          what: "Comparative genomics compares genome structure and content across species or strains to understand evolution, identify conserved elements, find lineage-specific genes, and understand genome rearrangements.",
+          questions: [
+            "What genes are shared between organisms (core genome)?",
+            "What genes are unique to a particular lineage (accessory genome)?",
+            "How do genomes rearrange during evolution?",
+            // ================================================================
+//  CONTINUATION — paste directly after the last line of Part 1
+//  (which ended inside comparative_genomics.content.questions)
+// ================================================================
+
+            "What syntenic regions are conserved between genomes?",
+            "What role does gene duplication play in evolution?"
+          ],
+          tools: [
+            { name: "OrthoFinder", type: "tool", desc: "Ortholog and orthogroup inference" },
+            { name: "Roary", type: "tool", desc: "Pan-genome analysis for prokaryotes" },
+            { name: "Panaroo", type: "tool", desc: "Robust pan-genome pipeline" },
+            { name: "MUMmer", type: "tool", desc: "Whole-genome alignment" },
+            { name: "Mauve", type: "tool", desc: "Multiple genome alignment and visualization" },
+            { name: "SyMAP", type: "tool", desc: "Synteny mapping" },
+            { name: "ANI calculator", type: "tool", desc: "Average Nucleotide Identity" },
+            { name: "Sibelia", type: "tool", desc: "Synteny block detection" }
+          ]
+        },
+        children: [
+          {
+            id: "pan_genome",
+            label: "Pan-genome Analysis",
+            icon: "🫧",
+            content: {
+              title: "🫧 Pan-genome Analysis",
+              what: "Pan-genome analysis determines the core genome (genes shared by all strains), accessory genome (present in some strains), and unique genes in a collection of related genomes.",
+              questions: [
+                "What is the core genome of this species?",
+                "How open or closed is the pan-genome?",
+                "What accessory genes differentiate pathogenic from commensal strains?"
+              ],
+              tools: [
+                { name: "Roary", type: "tool", desc: "Fast pan-genome pipeline from GFF files" },
+                { name: "Panaroo", type: "tool", desc: "Error-aware pan-genome pipeline" },
+                { name: "PIRATE", type: "tool", desc: "Pangenome analysis with intergenic regions" },
+                { name: "PPanGGOLiN", type: "tool", desc: "Partitioned pan-genome graphs" }
+              ],
+              workflow: [
+                { step: 1, title: "Annotate all genomes first", cmd: "# Annotate each genome with Prokka\nfor genome in genomes/*.fasta; do\n  name=$(basename $genome .fasta)\n  prokka --outdir prokka_${name} \\\n    --prefix ${name} \\\n    --cpus 4 \\\n    $genome\ndone", lang: "bash" },
+                { step: 2, title: "Run Roary pan-genome analysis", cmd: "# Install Roary\nconda install -c bioconda roary\n\n# Collect GFF files\nmkdir gff_files\ncp prokka_*//*.gff gff_files/\n\n# Run Roary\nroary -e -n -p 8 \\\n  -f roary_output \\\n  -i 95 \\\n  gff_files/*.gff\n\n# Key outputs:\n# gene_presence_absence.csv — matrix of gene presence/absence\n# core_gene_alignment.aln — alignment of core genes\n# summary_statistics.txt — pan-genome stats\n# pan_genome_reference.fa — representative sequences", lang: "bash" },
+                { step: 3, title: "Visualize with Roary plots", cmd: "# Generate pan-genome plots\npython roary_plots.py roary_output/accessory_binary_genes.fa.newick \\\n  roary_output/gene_presence_absence.csv\n\n# Or use R\n# install.packages('pagoo') for interactive pan-genome analysis", lang: "bash" }
+              ],
+              interpretation: "Core genes (present in ≥99% of genomes) represent essential functions. Shell genes (15-95%) may be involved in niche adaptation. Cloud genes (<15%) are often mobile elements or strain-specific. A pan-genome is 'open' if new genes keep appearing with each new genome added, and 'closed' if it plateaus."
+            }
+          },
+          {
+            id: "whole_genome_alignment",
+            label: "Whole Genome Alignment",
+            icon: "🔗",
+            content: {
+              title: "🔗 Whole Genome Alignment & Synteny",
+              what: "Whole-genome alignment compares entire genome sequences to identify homologous regions, structural rearrangements, inversions, translocations, and syntenic blocks.",
+              questions: [
+                "What regions are conserved between two genomes?",
+                "What structural rearrangements have occurred?",
+                "What is the Average Nucleotide Identity (ANI) between strains?"
+              ],
+              tools: [
+                { name: "MUMmer / nucmer", type: "tool", desc: "Fast whole-genome alignment using suffix trees" },
+                { name: "Mauve", type: "tool", desc: "Progressive genome alignment with rearrangements" },
+                { name: "minimap2", type: "tool", desc: "Fast pairwise alignment for long sequences" },
+                { name: "pyani", type: "tool", desc: "ANI calculation in Python" }
+              ],
+              workflow: [
+                { step: 1, title: "ANI calculation", cmd: "# Install pyani\npip install pyani\n\n# Calculate ANI\naverage_nucleotide_identity.py \\\n  -i genomes_directory/ \\\n  -o ani_output/ \\\n  -m ANIb \\\n  -g\n\n# ANI > 95-96% = same species\n# ANI > 99% = same strain", lang: "bash" },
+                { step: 2, title: "Whole-genome alignment with MUMmer", cmd: "# Install MUMmer\nconda install -c bioconda mummer\n\n# Run nucmer\nnucmer --prefix=alignment \\\n  reference.fasta query.fasta\n\n# Filter alignments\ndelta-filter -1 alignment.delta > filtered.delta\n\n# Generate coords\nshow-coords -rcl filtered.delta > alignment.coords\n\n# Generate dotplot\nmummerplot --png --large \\\n  -p dotplot filtered.delta\n\n# Show SNPs\nshow-snps -Clr filtered.delta > snps.txt", lang: "bash" }
+              ],
+              interpretation: "In dot plots, diagonal lines indicate syntenic (collinear) regions. Breaks in the diagonal suggest rearrangements. Inversions appear as lines going in the opposite direction. ANI >95% is the standard species boundary for prokaryotes."
+            }
+          },
+          {
+            id: "ortholog_analysis",
+            label: "Ortholog / Paralog Analysis",
+            icon: "👥",
+            content: {
+              title: "👥 Ortholog & Paralog Analysis",
+              what: "Orthologs are genes in different species descended from a common ancestor (speciation events). Paralogs arise from gene duplication within a species. Identifying orthologs is crucial for functional annotation transfer and phylogenomics.",
+              questions: [
+                "Which genes in different species are orthologs?",
+                "What gene duplication events have occurred?",
+                "How can orthology inform gene function prediction?"
+              ],
+              tools: [
+                { name: "OrthoFinder", type: "tool", desc: "Comprehensive ortholog inference from proteomes" },
+                { name: "OrthoMCL", type: "tool", desc: "Graph-based ortholog clustering" },
+                { name: "InParanoid", type: "tool", desc: "Pairwise ortholog detection" },
+                { name: "BUSCO", type: "tool", desc: "Universal single-copy orthologs for completeness" }
+              ],
+              workflow: [
+                { step: 1, title: "Run OrthoFinder", cmd: "# Install\nconda install -c bioconda orthofinder\n\n# Prepare: one FASTA file of proteins per species\nmkdir proteomes\n# Copy .faa files from Prokka output\ncp prokka_*//*.faa proteomes/\n\n# Run OrthoFinder\northofinder -f proteomes/ -t 8 -a 4\n\n# Key outputs (in Results_XXXX/):\n# Orthogroups/Orthogroups.tsv — gene membership\n# Comparative_Genomics_Statistics/\n# Species_Tree/SpeciesTree_rooted.txt\n# Phylogenetic_Hierarchical_Orthogroups/", lang: "bash" }
+              ]
+            }
+          }
+        ]
+      },
+
+      // ──────────────────────────────────────────────
+      //  7. STRUCTURAL BIOINFORMATICS
+      // ──────────────────────────────────────────────
+      {
+        id: "structural_bioinfo",
+        label: "Structural Bioinformatics",
+        icon: "🏛️",
+        color: "cyan",
+        content: {
+          title: "🏛️ Structural Bioinformatics",
+          what: "Structural bioinformatics deals with the analysis and prediction of 3D structures of biological macromolecules (proteins, nucleic acids). Understanding structure helps explain function, interactions, and enables drug design.",
+          questions: [
+            "What is the 3D structure of a protein?",
+            "How can we predict structure from sequence?",
+            "What is the binding site for a drug or ligand?",
+            "How do two proteins interact?",
+            "How does a mutation affect protein structure?"
+          ],
+          tools: [
+            { name: "AlphaFold2", type: "tool", desc: "Deep learning protein structure prediction (revolutionary)" },
+            { name: "PyMOL", type: "tool", desc: "Molecular visualization" },
+            { name: "Chimera / ChimeraX", type: "tool", desc: "UCSF molecular visualization and analysis" },
+            { name: "Swiss-Model", type: "tool", desc: "Homology modeling server" },
+            { name: "MODELLER", type: "tool", desc: "Comparative protein structure modeling" },
+            { name: "AutoDock Vina", type: "tool", desc: "Molecular docking" },
+            { name: "GROMACS", type: "tool", desc: "Molecular dynamics simulations" },
+            { name: "Rosetta", type: "tool", desc: "Protein structure prediction and design" },
+            { name: "I-TASSER", type: "tool", desc: "Structure and function prediction" },
+            { name: "SWISS-PDB Viewer", type: "tool", desc: "Protein structure analysis" }
+          ],
+          databases: [
+            { name: "PDB", type: "db", desc: "Protein Data Bank — experimental structures" },
+            { name: "AlphaFold DB", type: "db", desc: "Predicted structures from AlphaFold" },
+            { name: "SCOP/CATH", type: "db", desc: "Structural classification databases" },
+            { name: "UniProt", type: "db", desc: "Protein sequences with structure links" }
+          ]
+        },
+        children: [
+          {
+            id: "structure_prediction",
+            label: "Protein Structure Prediction",
+            icon: "🔮",
+            content: {
+              title: "🔮 Protein Structure Prediction",
+              what: "Protein structure prediction determines the 3D fold of a protein from its amino acid sequence. Methods include homology modeling (template-based), ab initio prediction, and deep learning approaches like AlphaFold2.",
+              questions: [
+                "What is the predicted 3D structure of my protein?",
+                "How confident is the prediction?",
+                "What structural domains does my protein contain?"
+              ],
+              tools: [
+                { name: "AlphaFold2", type: "tool", desc: "State-of-the-art deep learning prediction" },
+                { name: "ColabFold", type: "tool", desc: "AlphaFold2 on Google Colab (easy access)" },
+                { name: "ESMFold", type: "tool", desc: "Meta's protein language model predictions" },
+                { name: "Swiss-Model", type: "tool", desc: "Automated homology modeling" },
+                { name: "RoseTTAFold", type: "tool", desc: "Three-track neural network prediction" }
+              ],
+              workflow: [
+                { step: 1, title: "Structure prediction with ColabFold", cmd: "# ColabFold (easiest method — uses Google Colab)\n# 1. Go to: https://colab.research.google.com/github/sokrypton/ColabFold/blob/main/AlphaFold2.ipynb\n# 2. Paste your protein sequence in the query field\n# 3. Set parameters (num_recycles=3, use_amber=True for refinement)\n# 4. Run all cells\n# 5. Download results (.pdb files + confidence scores)\n\n# Local AlphaFold2 installation (requires GPU + ~2TB database)\nconda install -c conda-forge -c bioconda colabfold\ncolabfold_batch input.fasta output_dir/\n\n# Or use the AlphaFold Database directly:\n# https://alphafold.ebi.ac.uk/\n# Search by UniProt ID to get pre-computed structures", lang: "bash" },
+                { step: 2, title: "Homology modeling with Swiss-Model", cmd: "# Swiss-Model (web server — no installation needed)\n# 1. Go to: https://swissmodel.expasy.org/\n# 2. Paste protein sequence\n# 3. Click 'Build Model'\n# 4. Server identifies templates, builds models\n# 5. Download .pdb file\n\n# Evaluate model quality:\n# - GMQE (Global Model Quality Estimation): 0-1, higher is better\n# - QMEANDisCo: local quality per residue\n# - QMEAN Z-score: > -4.0 is acceptable", lang: "bash" },
+                { step: 3, title: "Visualize with PyMOL", cmd: "# Install PyMOL\nconda install -c conda-forge pymol-open-source\n\n# Open structure\npymol predicted_structure.pdb\n\n# PyMOL commands:\n# Color by secondary structure\ncolor red, ss h  # helices\ncolor yellow, ss s  # sheets\ncolor green, ss l+''  # loops\n\n# Color by B-factor (confidence for AlphaFold)\nspectrum b, blue_red, minimum=0, maximum=100\n\n# Show surface\nshow surface\nset transparency, 0.5\n\n# Save image\nray 2400, 1800\npng structure_image.png, dpi=300", lang: "bash" }
+              ],
+              interpretation: "For AlphaFold2: pLDDT (predicted Local Distance Difference Test) >90 = very high confidence, 70-90 = confident, 50-70 = low confidence, <50 = very low (likely disordered). PAE (Predicted Aligned Error) matrix shows inter-domain confidence — useful for multidomain proteins. For homology models, GMQE >0.7 is good. Always validate with experimental data when possible."
+            }
+          },
+          {
+            id: "molecular_docking",
+            label: "Molecular Docking",
+            icon: "🔑",
+            content: {
+              title: "🔑 Molecular Docking",
+              what: "Molecular docking predicts how a small molecule (ligand/drug) binds to a protein receptor. It is fundamental to computer-aided drug discovery (CADD), predicting binding affinity and pose.",
+              questions: [
+                "Where does a drug molecule bind on a protein?",
+                "What is the predicted binding affinity?",
+                "Which candidate drugs bind best to a target?",
+                "What are the key interactions (H-bonds, hydrophobic, etc.)?"
+              ],
+              tools: [
+                { name: "AutoDock Vina", type: "tool", desc: "Fast and accurate open-source docking" },
+                { name: "AutoDock4", type: "tool", desc: "Classic docking with force fields" },
+                { name: "SwissDock", type: "tool", desc: "Web-based docking server" },
+                { name: "HADDOCK", type: "tool", desc: "Protein-protein docking" },
+                { name: "Open Babel", type: "tool", desc: "Chemical format conversion" },
+                { name: "MGLTools", type: "tool", desc: "AutoDock receptor/ligand preparation" },
+                { name: "PLIP", type: "tool", desc: "Protein-Ligand Interaction Profiler" }
+              ],
+              workflow: [
+                { step: 1, title: "Prepare receptor and ligand", cmd: "# Install tools\nconda install -c conda-forge -c bioconda \\\n  autodock-vina openbabel mgltools\n\n# Download protein structure from PDB\nwget https://files.rcsb.org/download/1AKE.pdb\n\n# Remove water and heteroatoms, add hydrogens\n# Using Open Babel\nobabel 1AKE.pdb -O receptor_clean.pdb -d  # delete H\nobabel receptor_clean.pdb -O receptor.pdbqt -xh  # add H and convert\n\n# Prepare with MGLTools (more control)\npythonsh prepare_receptor4.py -r 1AKE.pdb \\\n  -o receptor.pdbqt -A hydrogens\n\n# Prepare ligand (from SDF, MOL2, or SMILES)\n# Download from PubChem, ZINC, or ChEMBL\nobabel ligand.sdf -O ligand.pdbqt --gen3d -h", lang: "bash" },
+                { step: 2, title: "Define search space and run docking", cmd: "# Create Vina config file\ncat > vina_config.txt << EOF\nreceptor = receptor.pdbqt\nligand = ligand.pdbqt\nout = docking_results.pdbqt\n\n# Search space (center and size in Angstroms)\ncenter_x = 10.0\ncenter_y = 20.0\ncenter_z = 30.0\nsize_x = 25\nsize_y = 25\nsize_z = 25\n\nexhaustiveness = 32\nnum_modes = 10\nenergy_range = 3\nEOF\n\n# Run Vina\nvina --config vina_config.txt\n\n# Output shows:\n# mode | affinity (kcal/mol) | rmsd l.b. | rmsd u.b.\n#    1        -8.5               0.000       0.000\n#    2        -7.9               2.134       3.456", lang: "bash" },
+                { step: 3, title: "Analyze and visualize results", cmd: "# Split docking output into individual poses\nvina_split --input docking_results.pdbqt\n\n# Visualize in PyMOL\npymol receptor.pdb docking_results_1.pdbqt\n\n# PyMOL commands for visualization:\n# show sticks, ligand\n# show cartoon, receptor\n# select binding_site, byres ligand around 5\n# show sticks, binding_site\n# color cyan, ligand\n\n# Analyze interactions with PLIP (web)\n# Upload complex to: https://plip-tool.biotec.tu-dresden.de/", lang: "bash" }
+              ],
+              interpretation: "Binding affinity (kcal/mol): more negative = stronger binding. Values of -7 to -10 kcal/mol suggest good binding. Check RMSD between poses — low RMSD cluster means consistent prediction. Key interactions: hydrogen bonds (<3.5Å), hydrophobic contacts, π-π stacking, salt bridges. Always validate computationally promising hits experimentally.",
+              errors: [
+                { error: "Vina: ERROR: Could not parse receptor", solution: "Ensure PDBQT format is correct. Use MGLTools prepare_receptor4.py instead of Open Babel for better compatibility." },
+                { error: "All binding affinities near 0", solution: "Check search space — it may not cover the binding site. Increase exhaustiveness. Verify ligand has proper 3D coordinates." }
+              ]
+            }
+          },
+          {
+            id: "md_simulations",
+            label: "Molecular Dynamics",
+            icon: "🌊",
+            content: {
+              title: "🌊 Molecular Dynamics Simulations",
+              what: "Molecular dynamics (MD) simulates the physical movements of atoms over time by solving Newton's equations of motion. It reveals protein dynamics, conformational changes, binding mechanisms, and stability.",
+              questions: [
+                "How does a protein move and flex in solution?",
+                "Is a drug-protein complex stable over time?",
+                "What conformational changes occur upon ligand binding?",
+                "How does a mutation affect protein stability?"
+              ],
+              tools: [
+                { name: "GROMACS", type: "tool", desc: "High-performance MD engine" },
+                { name: "AMBER", type: "tool", desc: "MD simulation suite" },
+                { name: "NAMD", type: "tool", desc: "Scalable MD program" },
+                { name: "OpenMM", type: "tool", desc: "GPU-accelerated MD in Python" },
+                { name: "VMD", type: "tool", desc: "Visualization and analysis of MD trajectories" }
+              ],
+              math: [
+                "Newton's equation: F = ma → mᵢ(d²rᵢ/dt²) = -∇V(r₁, r₂, ..., rₙ)",
+                "Lennard-Jones potential: V(r) = 4ε[(σ/r)¹² - (σ/r)⁶]",
+                "Coulomb: V(r) = q₁q₂ / (4πε₀r)",
+                "RMSD: √(1/N Σ||rᵢ(t) - rᵢ(ref)||²)",
+                "RMSF: √(1/T Σ||rᵢ(t) - ⟨rᵢ⟩||²)"
+              ],
+              workflow: [
+                { step: 1, title: "Setup GROMACS simulation", cmd: "# Install GROMACS\nconda install -c conda-forge -c bioconda gromacs\n\n# Prepare topology\ngmx pdb2gmx -f protein.pdb -o processed.gro \\\n  -water spce -ff amber99sb-ildn\n\n# Define simulation box\ngmx editconf -f processed.gro -o boxed.gro \\\n  -c -d 1.0 -bt cubic\n\n# Solvate\ngmx solvate -cp boxed.gro -cs spc216.gro \\\n  -o solvated.gro -p topol.top\n\n# Add ions (neutralize charge)\ngmx grompp -f ions.mdp -c solvated.gro \\\n  -p topol.top -o ions.tpr\ngmx genion -s ions.tpr -o solv_ions.gro \\\n  -p topol.top -pname NA -nname CL -neutral", lang: "bash" },
+                { step: 2, title: "Energy minimization and equilibration", cmd: "# Energy minimization\ngmx grompp -f minim.mdp -c solv_ions.gro \\\n  -p topol.top -o em.tpr\ngmx mdrun -v -deffnm em\n\n# NVT equilibration (100 ps)\ngmx grompp -f nvt.mdp -c em.gro -r em.gro \\\n  -p topol.top -o nvt.tpr\ngmx mdrun -deffnm nvt\n\n# NPT equilibration (100 ps)\ngmx grompp -f npt.mdp -c nvt.gro -r nvt.gro \\\n  -t nvt.cpt -p topol.top -o npt.tpr\ngmx mdrun -deffnm npt", lang: "bash" },
+                { step: 3, title: "Production MD run and analysis", cmd: "# Production run (e.g., 100 ns)\ngmx grompp -f md.mdp -c npt.gro -t npt.cpt \\\n  -p topol.top -o md.tpr\ngmx mdrun -deffnm md -nb gpu\n\n# Analysis: RMSD\ngmx rms -s md.tpr -f md.xtc -o rmsd.xvg -tu ns\n\n# Analysis: RMSF (flexibility)\ngmx rmsf -s md.tpr -f md.xtc -o rmsf.xvg -res\n\n# Analysis: Radius of gyration (compactness)\ngmx gyrate -s md.tpr -f md.xtc -o gyrate.xvg\n\n# Analysis: Hydrogen bonds\ngmx hbond -s md.tpr -f md.xtc -num hbond.xvg\n\n# Plot with xmgrace or Python\nxmgrace rmsd.xvg", lang: "bash" }
+              ],
+              interpretation: "RMSD: should plateau (stabilize) — indicates equilibration. Typical protein RMSD 1-3 Å. RMSF: high values indicate flexible regions (loops, termini). Radius of gyration: stable value means protein doesn't unfold. Hydrogen bonds: stable count supports structural integrity. Run multiple replicates (n≥3) for statistical confidence."
+            }
+          }
+        ]
+      },
+
+      // ──────────────────────────────────────────────
+      //  8. PROTEOMICS
+      // ──────────────────────────────────────────────
+      {
+        id: "proteomics",
+        label: "Proteomics",
+        icon: "🧫",
+        color: "purple",
+        content: {
+          title: "🧫 Proteomics",
+          what: "Proteomics is the large-scale study of proteins — their expression, structure, function, interactions, and modifications. Mass spectrometry (MS) is the primary technology.",
+          questions: [
+            "What proteins are expressed in a cell/tissue?",
+            "How do protein levels change between conditions?",
+            "What post-translational modifications (PTMs) are present?",
+            "What protein-protein interactions exist?",
+            "What proteins are in a complex?"
+          ],
+          tools: [
+            { name: "MaxQuant", type: "tool", desc: "Quantitative MS proteomics" },
+            { name: "Proteome Discoverer", type: "tool", desc: "Thermo Fisher MS data analysis" },
+            { name: "Perseus", type: "tool", desc: "Statistical analysis of proteomics data" },
+            { name: "MSFragger", type: "tool", desc: "Ultra-fast peptide identification" },
+            { name: "OpenMS", type: "tool", desc: "Open-source MS data processing" },
+            { name: "STRING", type: "tool", desc: "Protein-protein interaction networks" },
+            { name: "Cytoscape", type: "tool", desc: "Network visualization and analysis" }
+          ],
+          databases: [
+            { name: "UniProt", type: "db", desc: "Protein sequence and annotation" },
+            { name: "PDB", type: "db", desc: "Protein 3D structures" },
+            { name: "PRIDE", type: "db", desc: "Proteomics data repository" },
+            { name: "PhosphoSitePlus", type: "db", desc: "Post-translational modifications" },
+            { name: "STRING", type: "db", desc: "Protein interaction database" },
+            { name: "IntAct", type: "db", desc: "Molecular interaction database" }
+          ]
+        },
+        children: [
+          {
+            id: "ms_proteomics",
+            label: "Mass Spectrometry Proteomics",
+            icon: "⚗️",
+            content: {
+              title: "⚗️ Mass Spectrometry-based Proteomics",
+              what: "MS proteomics identifies and quantifies proteins by measuring mass-to-charge ratios of peptide ions. Bottom-up (shotgun) proteomics digests proteins into peptides before MS analysis.",
+              questions: [
+                "What proteins are present in my sample?",
+                "How do I quantify protein abundance differences?",
+                "What post-translational modifications can I detect?"
+              ],
+              tools: [
+                { name: "MaxQuant", type: "tool", desc: "Label-free and SILAC quantification" },
+                { name: "MSFragger", type: "tool", desc: "Database search engine" },
+                { name: "Comet", type: "tool", desc: "MS/MS search engine" },
+                { name: "Percolator", type: "tool", desc: "Semi-supervised PSM rescoring" }
+              ],
+              workflow: [
+                { step: 1, title: "Analyze with MaxQuant", cmd: "# MaxQuant is GUI-based (Windows/Linux)\n# Download from: https://www.maxquant.org/\n\n# Steps:\n# 1. Load raw MS files (.raw, .mzML)\n# 2. Set protein database (UniProt FASTA)\n# 3. Configure:\n#    - Enzyme: Trypsin/P\n#    - Fixed modifications: Carbamidomethyl (C)\n#    - Variable modifications: Oxidation (M), Acetyl (Protein N-term)\n#    - Max missed cleavages: 2\n#    - FDR: 1% at peptide and protein level\n#    - LFQ (Label-Free Quantification): enabled\n# 4. Run analysis\n# 5. Key output: proteinGroups.txt, evidence.txt", lang: "bash" },
+                { step: 2, title: "Statistical analysis with Perseus or R", cmd: "# ===== R Script for proteomics DE analysis =====\n\nlibrary(limma)\nlibrary(ggplot2)\n\n# Read MaxQuant output\npg <- read.delim(\"proteinGroups.txt\", stringsAsFactors=FALSE)\n\n# Filter\npg <- pg[pg$Reverse != \"+\", ]\npg <- pg[pg$Potential.contaminant != \"+\", ]\npg <- pg[pg$Only.identified.by.site != \"+\", ]\n\n# Extract LFQ intensity columns\nlfq <- pg[, grep(\"LFQ.intensity.\", colnames(pg))]\nrownames(lfq) <- pg$Protein.IDs\n\n# Log2 transform\nlfq_log <- log2(lfq)\nlfq_log[is.infinite(as.matrix(lfq_log))] <- NA\n\n# Filter: at least 2 valid values per group\nvalid <- rowSums(!is.na(lfq_log[,1:3])) >= 2 &\n         rowSums(!is.na(lfq_log[,4:6])) >= 2\nlfq_filtered <- lfq_log[valid, ]\n\n# Imputation (replace NA with low values)\nset.seed(42)\nfor(i in 1:ncol(lfq_filtered)) {\n  na_idx <- is.na(lfq_filtered[,i])\n  lfq_filtered[na_idx, i] <- rnorm(\n    sum(na_idx),\n    mean = min(lfq_filtered[,i], na.rm=TRUE) - 1.8,\n    sd = 0.3)\n}\n\n# limma DE analysis\ngroup <- factor(c(rep(\"treatment\",3), rep(\"control\",3)))\ndesign <- model.matrix(~0+group)\nfit <- lmFit(lfq_filtered, design)\ncontrast <- makeContrasts(grouptreatment - groupcontrol, levels=design)\nfit2 <- contrasts.fit(fit, contrast)\nfit2 <- eBayes(fit2)\nresults <- topTable(fit2, number=Inf)\n\nwrite.csv(results, \"proteomics_DE_results.csv\")", lang: "r" }
+              ]
+            }
+          },
+          {
+            id: "ppi_networks",
+            label: "Protein-Protein Interactions",
+            icon: "🕸️",
+            content: {
+              title: "🕸️ Protein-Protein Interaction Networks",
+              what: "PPI networks map the physical and functional interactions between proteins. Network analysis reveals protein complexes, signaling pathways, and key hub proteins.",
+              questions: [
+                "Which proteins interact with my protein of interest?",
+                "What are the key hub proteins in the network?",
+                "What functional modules exist?"
+              ],
+              tools: [
+                { name: "STRING", type: "tool", desc: "Online PPI database and visualization" },
+                { name: "Cytoscape", type: "tool", desc: "Desktop network analysis and visualization" },
+                { name: "NetworkX (Python)", type: "tool", desc: "Graph analysis library" }
+              ],
+              workflow: [
+                { step: 1, title: "Get PPI network from STRING", cmd: "# STRING (web): https://string-db.org/\n# 1. Enter protein(s) of interest\n# 2. Select organism\n# 3. Set confidence threshold (0.4=medium, 0.7=high, 0.9=highest)\n# 4. Export network as TSV for Cytoscape\n\n# STRING API (programmatic access)\n# Get interactions for TP53:\ncurl 'https://string-db.org/api/tsv/network?identifiers=TP53&species=9606&required_score=700' \\\n  -o tp53_network.tsv", lang: "bash" },
+                { step: 2, title: "Analyze in Cytoscape", cmd: "# Download Cytoscape: https://cytoscape.org/\n# 1. File > Import > Network from File > string_network.tsv\n# 2. Install apps: ClusterONE, MCODE, NetworkAnalyzer\n# 3. Tools > NetworkAnalyzer > Analyze Network\n#    - Identify hub proteins (high degree/betweenness)\n# 4. Apps > MCODE > Find Clusters\n#    - Identifies densely connected modules\n# 5. Style > map node size to degree centrality\n# 6. Export as image/session", lang: "bash" }
+              ]
+            }
+          }
+        ]
+      },
+
+      // ──────────────────────────────────────────────
+      //  9. SYSTEMS BIOLOGY
+      // ──────────────────────────────────────────────
+      {
+        id: "systems_biology",
+        label: "Systems Biology",
+        icon: "🔄",
+        color: "teal",
+        content: {
+          title: "🔄 Systems Biology & Pathway Analysis",
+          what: "Systems biology integrates multi-omics data (genomics, transcriptomics, proteomics, metabolomics) to understand biological systems holistically. It focuses on networks, pathways, and emergent properties.",
+          questions: [
+            "What biological pathways are affected in my experiment?",
+            "How do different molecular levels (DNA, RNA, protein) interact?",
+            "What are the key regulatory networks?"
+          ],
+          tools: [
+            { name: "clusterProfiler", type: "tool", desc: "GO/KEGG enrichment" },
+            { name: "Pathview", type: "tool", desc: "KEGG pathway visualization in R" },
+            { name: "GSEA", type: "tool", desc: "Gene Set Enrichment Analysis" },
+            { name: "Reactome", type: "tool", desc: "Pathway database and analysis" },
+            { name: "DAVID", type: "tool", desc: "Online functional annotation" },
+            { name: "Cytoscape", type: "tool", desc: "Network visualization" },
+            { name: "WGCNA", type: "tool", desc: "Weighted Gene Co-expression Network Analysis" }
+          ]
+        },
+        children: [
+          {
+            id: "pathway_enrichment",
+            label: "Pathway & GO Enrichment",
+            icon: "🗺️",
+            content: {
+              title: "🗺️ Pathway & Gene Ontology Enrichment",
+              what: "Enrichment analysis determines whether predefined gene sets (pathways, GO terms) are over-represented in a list of differentially expressed genes. This provides biological context to gene lists.",
+              questions: [
+                "What biological processes are enriched in my gene list?",
+                "Which KEGG pathways are significantly affected?",
+                "What molecular functions are over-represented?"
+              ],
+              workflow: [
+                { step: 1, title: "GO & KEGG enrichment with clusterProfiler", cmd: "# (See full workflow under Transcriptomics > RNA-seq Pipeline > Step 6)\n# Summary of key functions:\n\nlibrary(clusterProfiler)\nlibrary(org.Hs.eg.db)\n\n# Over-Representation Analysis (ORA)\ngo_results <- enrichGO(\n  gene = sig_gene_entrez_ids,\n  OrgDb = org.Hs.eg.db,\n  ont = \"BP\",     # BP, MF, CC, or ALL\n  pvalueCutoff = 0.05\n)\n\n# Gene Set Enrichment Analysis (GSEA)\n# Requires ranked gene list (all genes, not just significant)\ngene_list <- sort(setNames(res$log2FoldChange, rownames(res)), decreasing=TRUE)\n\ngsea_results <- gseGO(\n  geneList = gene_list,\n  OrgDb = org.Hs.eg.db,\n  ont = \"BP\",\n  pvalueCutoff = 0.05\n)\n\n# KEGG GSEA\ngsea_kegg <- gseKEGG(\n  geneList = entrez_ranked_list,\n  organism = \"hsa\",\n  pvalueCutoff = 0.05\n)", lang: "r" },
+                { step: 2, title: "Pathview visualization", cmd: "library(pathview)\n\n# Visualize specific KEGG pathway\npathview(\n  gene.data = gene_list_entrez,\n  pathway.id = \"hsa04110\",  # Cell cycle\n  species = \"hsa\",\n  limit = list(gene=2, cpd=1)\n)\n# Generates .png file with colored pathway map", lang: "r" }
+              ],
+              interpretation: "ORA tests if pathway genes are over-represented in your DE gene list. GSEA tests if pathway genes tend to be at the top/bottom of a ranked list — more powerful as it uses all genes. Low p-adjusted values and high gene ratios indicate meaningful enrichment. Consider multiple GO categories: Biological Process (BP), Molecular Function (MF), Cellular Component (CC)."
+            }
+          },
+          {
+            id: "wgcna",
+            label: "WGCNA Co-expression Networks",
+            icon: "🧵",
+            content: {
+              title: "🧵 WGCNA — Weighted Gene Co-expression Network Analysis",
+              what: "WGCNA identifies modules of highly correlated genes and relates them to external traits. It builds a gene co-expression network and finds clusters (modules) of co-expressed genes.",
+              questions: [
+                "Which genes are co-expressed (form functional modules)?",
+                "Which modules correlate with clinical traits?",
+                "What are the hub genes within each module?"
+              ],
+              tools: [
+                { name: "WGCNA (R)", type: "tool", desc: "R package for weighted correlation network analysis" }
+              ],
+              workflow: [
+                { step: 1, title: "Run WGCNA analysis", cmd: "# ===== R Script =====\ninstall.packages('WGCNA')\nlibrary(WGCNA)\noptions(stringsAsFactors = FALSE)\nallowWGCNAThreads()\n\n# Input: normalized expression matrix (genes as columns!)\n# rows = samples, columns = genes\ndatExpr <- t(normalized_counts)  # transpose if needed\n\n# Choose soft-thresholding power\npowers <- c(1:20)\nsft <- pickSoftThreshold(datExpr, powerVector=powers)\n\n# Plot to choose power (first value where R² > 0.85)\nplot(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],\n  xlab='Soft Threshold', ylab='Scale Free R²')\nabline(h=0.85, col='red')\n\n# Build network and identify modules\nnet <- blockwiseModules(\n  datExpr,\n  power = 6,  # chosen from plot above\n  TOMType = 'unsigned',\n  minModuleSize = 30,\n  reassignThreshold = 0,\n  mergeCutHeight = 0.25,\n  numericLabels = TRUE,\n  verbose = 3\n)\n\n# Module eigengenes\nMEs <- net$MEs\n\n# Relate modules to traits\nmoduleTraitCor <- cor(MEs, traits, use='p')\nmoduleTraitPvalue <- corPvalueStudent(moduleTraitCor, nrow(datExpr))", lang: "r" }
+              ]
+            }
+          }
+        ]
+      },
+
+      // ──────────────────────────────────────────────
+      //  10. FUNCTIONAL GENOMICS
+      // ──────────────────────────────────────────────
+      {
+        id: "functional_genomics",
+        label: "Functional Genomics",
+        icon: "⚙️",
+        color: "red",
+        content: {
+          title: "⚙️ Functional Genomics",
+          what: "Functional genomics uses high-throughput approaches to understand gene function, regulation, and interactions on a genome-wide scale. It includes ChIP-seq, ATAC-seq, CRISPR screens, and epigenomics.",
+          questions: [
+            "Where do transcription factors bind in the genome?",
+            "What regions of chromatin are accessible?",
+            "What epigenetic modifications regulate gene expression?",
+            "What is the function of a specific gene (loss/gain of function)?"
+          ],
+          tools: [
+            { name: "MACS2", type: "tool", desc: "ChIP-seq peak calling" },
+            { name: "Bowtie2", type: "tool", desc: "Short read alignment for ChIP-seq" },
+            { name: "deepTools", type: "tool", desc: "NGS data visualization (heatmaps, profiles)" },
+            { name: "Homer", type: "tool", desc: "Motif discovery and ChIP-seq analysis" },
+            { name: "Genrich", type: "tool", desc: "ATAC-seq peak calling" },
+            { name: "Bismark", type: "tool", desc: "Bisulfite sequencing (DNA methylation)" }
+          ]
+        },
+        children: [
+          {
+            id: "chipseq",
+            label: "ChIP-seq Analysis",
+            icon: "🎯",
+            content: {
+              title: "🎯 ChIP-seq Analysis",
+              what: "ChIP-seq (Chromatin Immunoprecipitation Sequencing) identifies genome-wide binding sites of transcription factors, histone modifications, and other chromatin-associated proteins.",
+              questions: [
+                "Where does my transcription factor bind in the genome?",
+                "What DNA motif does the TF recognize?",
+                "What genes are regulated by this TF?"
+              ],
+              workflow: [
+                { step: 1, title: "ChIP-seq pipeline", cmd: "# Install tools\nconda install -c bioconda bowtie2 samtools \\\n  macs2 deeptools homer\n\n# Align reads\nbowtie2 -x genome_index \\\n  -1 chip_R1.fastq.gz -2 chip_R2.fastq.gz \\\n  -p 8 | samtools sort -o chip.bam\nsamtools index chip.bam\n\n# Same for input control\nbowtie2 -x genome_index \\\n  -1 input_R1.fastq.gz -2 input_R2.fastq.gz \\\n  -p 8 | samtools sort -o input.bam\nsamtools index input.bam\n\n# Remove duplicates\nsamtools markdup -r chip.bam chip_dedup.bam\nsamtools markdup -r input.bam input_dedup.bam", lang: "bash" },
+                { step: 2, title: "Peak calling with MACS2", cmd: "# Call peaks\nmacs2 callpeak \\\n  -t chip_dedup.bam \\\n  -c input_dedup.bam \\\n  -f BAMPE \\\n  -g hs \\\n  --outdir macs2_output \\\n  -n my_chip \\\n  -q 0.05\n\n# For broad marks (H3K27me3, H3K36me3):\nmacs2 callpeak -t chip.bam -c input.bam \\\n  -f BAMPE -g hs --broad --broad-cutoff 0.1 \\\n  --outdir macs2_broad -n broad_marks", lang: "bash" },
+                { step: 3, title: "Visualization and motif analysis", cmd: "# deepTools heatmap\ncomputeMatrix reference-point \\\n  -S chip.bw -R peaks.bed \\\n  --referencePoint center \\\n  -b 3000 -a 3000 \\\n  -o matrix.gz\n\nplotHeatmap -m matrix.gz \\\n  -out heatmap.png \\\n  --colorMap RdYlBu\n\n# Motif discovery with Homer\nfindMotifsGenome.pl \\\n  macs2_output/my_chip_peaks.narrowPeak \\\n  hg38 homer_output/ -size 200 -mask", lang: "bash" }
+              ]
+            }
+          }
+        ]
+      },
+
+      // ──────────────────────────────────────────────
+      //  11. DATA SCIENCE & MACHINE LEARNING IN BIOINFORMATICS
+      // ──────────────────────────────────────────────
+      {
+        id: "bioinfo_ml",
+        label: "Machine Learning in Bio",
+        icon: "🤖",
+        color: "yellow",
+        content: {
+          title: "🤖 Machine Learning in Bioinformatics",
+          what: "Machine learning and deep learning methods are increasingly used in bioinformatics for prediction tasks: protein structure (AlphaFold), variant pathogenicity, drug response, gene expression prediction, and biomarker discovery.",
+          questions: [
+            "Can we predict protein function from sequence?",
+            "Which variants are pathogenic?",
+            "Can we classify tumor types from expression data?",
+            "What biomarkers predict drug response?"
+          ],
+          tools: [
+            { name: "scikit-learn", type: "lang", desc: "Classical ML in Python" },
+            { name: "TensorFlow/Keras", type: "lang", desc: "Deep learning framework" },
+            { name: "PyTorch", type: "lang", desc: "Deep learning framework" },
+            { name: "caret (R)", type: "lang", desc: "ML framework in R" },
+            { name: "AlphaFold2", type: "tool", desc: "DL protein structure prediction" },
+            { name: "DeepVariant", type: "tool", desc: "DL variant calling" },
+            { name: "CADD", type: "tool", desc: "Combined Annotation Dependent Depletion — variant pathogenicity" }
+          ]
+        },
+        children: []
+      },
+
+      // ──────────────────────────────────────────────
+      //  12. CLINICAL / MEDICAL BIOINFORMATICS
+      // ──────────────────────────────────────────────
+      {
+        id: "clinical_bioinfo",
+        label: "Clinical Bioinformatics",
+        icon: "🏥",
+        color: "red",
+        content: {
+          title: "🏥 Clinical & Medical Bioinformatics",
+          what: "Clinical bioinformatics applies computational methods to clinical data for diagnosis, prognosis, and treatment decisions. Includes pharmacogenomics, cancer genomics, and rare disease diagnosis.",
+          questions: [
+            "What causative variant underlies a patient's rare disease?",
+            "What targeted therapy is appropriate for a tumor's mutations?",
+            "How does a patient's genotype affect drug metabolism?"
+          ],
+          tools: [
+            { name: "ClinVar", type: "db", desc: "Clinical variant database" },
+            { name: "OMIM", type: "db", desc: "Online Mendelian Inheritance in Man" },
+            { name: "PharmGKB", type: "db", desc: "Pharmacogenomics knowledge base" },
+            { name: "cBioPortal", type: "db", desc: "Cancer genomics portal" },
+            { name: "COSMIC", type: "db", desc: "Catalogue of Somatic Mutations in Cancer" },
+            { name: "VEP", type: "tool", desc: "Variant Effect Predictor" },
+            { name: "InterVar", type: "tool", desc: "ACMG variant classification" }
+          ]
+        },
+        children: []
+      }
+    ] // end root children
+  }; // end KNOWLEDGE_TREE
+
+
+  // ==============================================================
+  //  SECTION 2: UTILITY HELPERS
+  // ==============================================================
+
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);
+  const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+
+  function escapeHTML(str) {
+    const d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  /** Flatten tree into array for search */
+  function flattenTree(node, path = []) {
     const currentPath = [...path, node.label];
-    state.nodeIndex.push({
-        id: node.id,
-        label: node.label,
-        icon: node.icon || '📄',
-        path: currentPath.join(' › '),
-        colorClass: node.colorClass || (path.length > 0 ? path[0] : '')
-    });
-    if (node.children) node.children.forEach(c => buildNodeIndex(c, currentPath));
-}
+    const items = [{ ...node, path: currentPath }];
+    if (node.children) {
+      for (const child of node.children) {
+        items.push(...flattenTree(child, currentPath));
+      }
+    }
+    return items;
+  }
 
-/* --- find a node by id --- */
-function findNode(id, node) {
-    node = node || TREE_DATA;
+  /** Count various statistics */
+  function countStats(node) {
+    let topics = 0, tools = 0, workflows = 0;
+    function walk(n) {
+      topics++;
+      if (n.content) {
+        if (n.content.tools) tools += n.content.tools.length;
+        if (n.content.databases) tools += n.content.databases.length;
+        if (n.content.workflow) workflows++;
+      }
+      if (n.children) n.children.forEach(walk);
+    }
+    walk(node);
+    return { topics, tools, workflows };
+  }
+
+
+  // ==============================================================
+  //  SECTION 3: STATE
+  // ==============================================================
+
+  const state = {
+    activeNodeId: "root",
+    expandedNodes: new Set(["root"]),
+    theme: localStorage.getItem("bioinfo-theme") || "dark",
+    flatNodes: flattenTree(KNOWLEDGE_TREE),
+    sidebarWidth: parseInt(localStorage.getItem("bioinfo-sidebar-w") || "360", 10)
+  };
+
+  /** Lookup a node by id */
+  function findNode(id, node = KNOWLEDGE_TREE) {
     if (node.id === id) return node;
     if (node.children) {
-        for (const c of node.children) {
-            const found = findNode(id, c);
-            if (found) return found;
-        }
+      for (const c of node.children) {
+        const found = findNode(id, c);
+        if (found) return found;
+      }
     }
     return null;
-}
+  }
 
-/* --- get path to a node --- */
-function getPathTo(id, node, path) {
-    node = node || TREE_DATA;
-    path = path || [];
-    if (node.id === id) return [...path, { id: node.id, label: node.label, icon: node.icon }];
+  /** Get ancestry path to a node */
+  function getAncestry(id, node = KNOWLEDGE_TREE, path = []) {
+    if (node.id === id) return [...path, node];
     if (node.children) {
-        for (const c of node.children) {
-            const res = getPathTo(id, c, [...path, { id: node.id, label: node.label, icon: node.icon }]);
-            if (res) return res;
-        }
+      for (const c of node.children) {
+        const res = getAncestry(id, c, [...path, node]);
+        if (res) return res;
+      }
     }
     return null;
-}
+  }
 
-/* --- render sidebar tree --- */
-function renderTree() {
-    const container = $('#treeContainer');
-    container.innerHTML = '';
 
-    function buildNode(node, depth) {
-        const div = document.createElement('div');
-        div.className = 'tree-node';
-        div.dataset.id = node.id;
+  // ==============================================================
+  //  SECTION 4: THEME
+  // ==============================================================
 
-        const hasChildren = node.children && node.children.length > 0;
-        const isExpanded = state.expandedNodes.has(node.id);
-        const isActive = state.activeNodeId === node.id;
+  function applyTheme(theme) {
+    state.theme = theme;
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("bioinfo-theme", theme);
+  }
 
-        const header = document.createElement('div');
-        header.className = 'tree-node-header' + (isActive ? ' active' : '');
-        header.style.setProperty('--depth', depth);
-        if (node.colorClass) header.dataset.color = node.colorClass;
 
-        header.innerHTML = `
-            <span class="tree-toggle ${hasChildren ? (isExpanded ? 'expanded' : '') : 'leaf'}">▶</span>
-            <span class="node-icon">${node.icon || '📄'}</span>
-            <span class="node-label">${node.label}</span>
-            ${hasChildren ? `<span class="node-badge">${node.children.length}</span>` : ''}
-        `;
+  // ==============================================================
+  //  SECTION 5: SIDEBAR TREE RENDERING
+  // ==============================================================
 
-        header.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (hasChildren) {
-                if (state.expandedNodes.has(node.id)) {
-                    state.expandedNodes.delete(node.id);
-                } else {
-                    state.expandedNodes.add(node.id);
-                }
-            }
-            activateNode(node.id);
-        });
+  const treeContainer = $("#treeContainer");
 
-        div.appendChild(header);
+  function renderTree() {
+    treeContainer.innerHTML = "";
+    renderTreeNode(KNOWLEDGE_TREE, treeContainer, 0);
+  }
 
-        if (hasChildren) {
-            const childrenDiv = document.createElement('div');
-            childrenDiv.className = 'tree-node-children' + (isExpanded ? ' expanded' : '');
-            node.children.forEach(c => childrenDiv.appendChild(buildNode(c, depth + 1)));
-            div.appendChild(childrenDiv);
+  function renderTreeNode(node, parentEl, depth) {
+    const div = document.createElement("div");
+    div.className = "tree-node";
+    div.dataset.id = node.id;
+
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = state.expandedNodes.has(node.id);
+    const isActive = state.activeNodeId === node.id;
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "tree-node-header" + (isActive ? " active" : "");
+    header.style.setProperty("--depth", depth);
+    if (node.color) header.dataset.color = node.color;
+
+    // Toggle chevron
+    const toggle = document.createElement("span");
+    toggle.className = "tree-toggle" + (hasChildren ? (isExpanded ? " expanded" : "") : " leaf");
+    toggle.innerHTML = "▶";
+    header.appendChild(toggle);
+
+    // Icon
+    const icon = document.createElement("span");
+    icon.className = "node-icon";
+    icon.textContent = node.icon || "📄";
+    header.appendChild(icon);
+
+    // Label
+    const label = document.createElement("span");
+    label.className = "node-label";
+    label.textContent = node.label;
+    header.appendChild(label);
+
+    // Badge (child count)
+    if (hasChildren) {
+      const badge = document.createElement("span");
+      badge.className = "node-badge";
+      badge.textContent = node.children.length;
+      header.appendChild(badge);
+    }
+
+    header.addEventListener("click", (e) => {
+      e.stopPropagation();
+      // Toggle expand
+      if (hasChildren) {
+        if (state.expandedNodes.has(node.id)) {
+          state.expandedNodes.delete(node.id);
+        } else {
+          state.expandedNodes.add(node.id);
         }
-        return div;
+      }
+      // Set active
+      state.activeNodeId = node.id;
+      renderTree();
+      renderContent(node.id);
+      updateBreadcrumb(node.id);
+    });
+
+    div.appendChild(header);
+
+    // Children container
+    if (hasChildren) {
+      const childrenDiv = document.createElement("div");
+      childrenDiv.className = "tree-node-children" + (isExpanded ? " expanded" : "");
+      for (const child of node.children) {
+        renderTreeNode(child, childrenDiv, depth + 1);
+      }
+      div.appendChild(childrenDiv);
     }
 
-    TREE_DATA.children.forEach(c => container.appendChild(buildNode(c, 0)));
-}
+    parentEl.appendChild(div);
+  }
 
-/* --- activate a node --- */
-function activateNode(id) {
+
+  // ==============================================================
+  //  SECTION 6: BREADCRUMB
+  // ==============================================================
+
+  const breadcrumbInner = $(".breadcrumb-inner");
+
+  function updateBreadcrumb(id) {
+    const ancestry = getAncestry(id);
+    if (!ancestry) return;
+    breadcrumbInner.innerHTML = "";
+    ancestry.forEach((node, i) => {
+      if (i > 0) {
+        const sep = document.createElement("span");
+        sep.className = "breadcrumb-separator";
+        sep.textContent = "›";
+        breadcrumbInner.appendChild(sep);
+      }
+      if (i < ancestry.length - 1) {
+        const item = document.createElement("span");
+        item.className = "breadcrumb-item";
+        item.textContent = (i === 0 ? "🏠 " : "") + node.label;
+        item.addEventListener("click", () => {
+          state.activeNodeId = node.id;
+          state.expandedNodes.add(node.id);
+          renderTree();
+          renderContent(node.id);
+          updateBreadcrumb(node.id);
+        });
+        breadcrumbInner.appendChild(item);
+      } else {
+        const current = document.createElement("span");
+        current.className = "breadcrumb-current";
+        current.textContent = node.label;
+        breadcrumbInner.appendChild(current);
+      }
+    });
+  }
+
+
+  // ==============================================================
+  //  SECTION 7: CONTENT RENDERING
+  // ==============================================================
+
+  const contentPanel = $("#contentPanel");
+
+  function renderContent(id) {
+    const node = findNode(id);
+    if (!node) return;
+    const c = node.content || {};
+
+    let html = "";
+
+    // ── Landing page for root ──
+    if (id === "root") {
+      html += renderLandingPage(node);
+      contentPanel.innerHTML = html;
+      attachLandingCardListeners();
+      return;
+    }
+
+    // ── Title card ──
+    html += `<div class="content-card">`;
+    html += `<h2>${escapeHTML(c.title || node.label)}</h2>`;
+
+    // Definition
+    if (c.what) {
+      html += `<div class="info-box definition"><div class="info-title">📘 What is it?</div><p>${escapeHTML(c.what)}</p></div>`;
+    }
+
+    // Overview
+    if (c.overview) {
+      html += `<p>${escapeHTML(c.overview)}</p>`;
+    }
+
+    // Questions
+    if (c.questions && c.questions.length) {
+      html += `<div class="info-box question"><div class="info-title">❓ Biological Questions Answered</div><ul>`;
+      c.questions.forEach(q => { html += `<li>${escapeHTML(q)}</li>`; });
+      html += `</ul></div>`;
+    }
+
+    html += `</div>`; // end title card
+
+    // ── Algorithms ──
+    if (c.algorithms && c.algorithms.length) {
+      html += `<div class="content-card"><h3>🧮 Algorithms & Methods</h3>`;
+      c.algorithms.forEach(a => {
+        html += `<h4>${escapeHTML(a.name)}</h4><p>${escapeHTML(a.desc)}</p>`;
+      });
+      html += `</div>`;
+    }
+
+    // ── Math ──
+    if (c.math && c.math.length) {
+      html += `<div class="content-card"><h3>📐 Mathematical Foundations</h3>`;
+      c.math.forEach(m => {
+        html += `<div class="formula">${escapeHTML(m)}</div>`;
+      });
+      html += `</div>`;
+    }
+
+    // ── Tools ──
+    if (c.tools && c.tools.length) {
+      html += `<div class="content-card"><h3>🛠️ Tools & Software</h3><div class="tags">`;
+      c.tools.forEach(t => {
+        const cls = t.type === "tool" ? "tag-tool" : t.type === "lang" ? "tag-lang" : "tag-tool";
+        html += `<span class="tag ${cls}" title="${escapeHTML(t.desc || "")}">${escapeHTML(t.name)}</span>`;
+      });
+      html += `</div>`;
+      // Table
+      html += `<div class="table-wrapper"><table class="comparison-table"><thead><tr><th>Tool</th><th>Type</th><th>Description</th></tr></thead><tbody>`;
+      c.tools.forEach(t => {
+        html += `<tr><td><strong>${escapeHTML(t.name)}</strong></td><td>${escapeHTML(t.type || "")}</td><td>${escapeHTML(t.desc || "")}</td></tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    }
+
+    // ── Databases ──
+    if (c.databases && c.databases.length) {
+      html += `<div class="content-card"><h3>🗄️ Databases</h3><div class="tags">`;
+      c.databases.forEach(d => {
+        html += `<span class="tag tag-db" title="${escapeHTML(d.desc || "")}">${escapeHTML(d.name)}</span>`;
+      });
+      html += `</div>`;
+      html += `<div class="table-wrapper"><table class="comparison-table"><thead><tr><th>Database</th><th>Description</th></tr></thead><tbody>`;
+      c.databases.forEach(d => {
+        html += `<tr><td><strong>${escapeHTML(d.name)}</strong></td><td>${escapeHTML(d.desc || "")}</td></tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    }
+
+    // ── Formats ──
+    if (c.formats && c.formats.length) {
+      html += `<div class="content-card"><h3>📄 File Formats</h3>`;
+      html += `<div class="table-wrapper"><table class="comparison-table"><thead><tr><th>Format</th><th>Description</th></tr></thead><tbody>`;
+      c.formats.forEach(f => {
+        html += `<tr><td><strong><code>${escapeHTML(f.name)}</code></strong></td><td>${escapeHTML(f.desc)}</td></tr>`;
+      });
+      html += `</tbody></table></div></div>`;
+    }
+
+    // ── Pipeline ──
+    if (c.pipeline && c.pipeline.length) {
+      html += `<div class="content-card"><h3>🔀 Analysis Pipeline</h3><div class="pipeline">`;
+      c.pipeline.forEach((p, i) => {
+        html += `<div class="pipeline-step"><div class="step-num">Step ${i + 1}</div><div class="step-name">${escapeHTML(p.name)}</div><div class="step-tool">${escapeHTML(p.tool)}</div></div>`;
+        if (i < c.pipeline.length - 1) {
+          html += `<span class="pipeline-arrow">→</span>`;
+        }
+      });
+      html += `</div></div>`;
+    }
+
+    // ── Workflow ──
+    if (c.workflow && c.workflow.length) {
+      html += `<div class="content-card"><h3>📋 Step-by-Step Reproducible Workflow</h3>`;
+      c.workflow.forEach(w => {
+        html += `<h4>Step ${w.step}: ${escapeHTML(w.title)}</h4>`;
+        html += renderCodeBlock(w.cmd, w.lang || "bash");
+      });
+      html += `</div>`;
+    }
+
+    // ── Interpretation ──
+    if (c.interpretation) {
+      html += `<div class="content-card"><div class="interpretation"><h4>📊 How to Interpret Results</h4><p>${escapeHTML(c.interpretation)}</p></div></div>`;
+    }
+
+    // ── Errors ──
+    if (c.errors && c.errors.length) {
+      html += `<div class="content-card"><h3>⚠️ Common Errors & Troubleshooting</h3>`;
+      c.errors.forEach((e, i) => {
+        const eid = `err_${id}_${i}`;
+        html += `<div class="error-item">`;
+        html += `<div class="error-header" data-eid="${eid}"><span class="error-icon">✗</span><span class="error-text">${escapeHTML(e.error)}</span><span class="error-toggle" id="toggle_${eid}">▶</span></div>`;
+        html += `<div class="error-solution" id="sol_${eid}"><div class="solution-label">✔ Solution</div><p>${escapeHTML(e.solution)}</p></div>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+
+    // ── Children navigation ──
+    if (node.children && node.children.length) {
+      html += `<div class="content-card"><h3>📂 Sub-topics</h3><div class="landing-grid">`;
+      node.children.forEach(child => {
+        const cc = child.content || {};
+        const desc = cc.what || "";
+        const childCount = child.children ? child.children.length : 0;
+        html += `<div class="landing-card ${child.color || ""}" data-nav-id="${child.id}">`;
+        html += `<div class="card-icon">${child.icon || "📄"}</div>`;
+        html += `<div class="card-title">${escapeHTML(child.label)}</div>`;
+        html += `<div class="card-desc">${escapeHTML(desc.substring(0, 150))}${desc.length > 150 ? "..." : ""}</div>`;
+        if (childCount) html += `<div class="card-count">${childCount} sub-topics</div>`;
+        html += `</div>`;
+      });
+      html += `</div></div>`;
+    }
+
+    contentPanel.innerHTML = html;
+    contentPanel.scrollTop = 0;
+    attachContentListeners();
+  }
+
+  /** Render landing page (root) */
+  function renderLandingPage(node) {
+    const c = node.content || {};
+    let html = `<div class="content-card">`;
+    html += `<h2>${escapeHTML(c.title || node.label)}</h2>`;
+    if (c.what) {
+      html += `<div class="info-box definition"><div class="info-title">📘 About This Archive</div><p>${escapeHTML(c.what)}</p></div>`;
+    }
+    if (c.overview) {
+      html += `<p>${escapeHTML(c.overview)}</p>`;
+    }
+    if (c.questions && c.questions.length) {
+      html += `<div class="info-box question"><div class="info-title">❓ Key Questions in Bioinformatics</div><ul>`;
+      c.questions.forEach(q => { html += `<li>${escapeHTML(q)}</li>`; });
+      html += `</ul></div>`;
+    }
+    html += `</div>`;
+
+    // Children grid
+    if (node.children && node.children.length) {
+      html += `<div class="content-card"><h3>🌐 Explore Sub-fields</h3><div class="landing-grid">`;
+      node.children.forEach(child => {
+        const cc = child.content || {};
+        const desc = cc.what || "";
+        const childCount = child.children ? child.children.length : 0;
+        const toolCount = cc.tools ? cc.tools.length : 0;
+        html += `<div class="landing-card ${child.color || ""}" data-nav-id="${child.id}">`;
+        html += `<div class="card-icon">${child.icon || "📄"}</div>`;
+        html += `<div class="card-title">${escapeHTML(child.label)}</div>`;
+        html += `<div class="card-desc">${escapeHTML(desc.substring(0, 160))}${desc.length > 160 ? "..." : ""}</div>`;
+        let meta = [];
+        if (childCount) meta.push(`${childCount} sub-topics`);
+        if (toolCount) meta.push(`${toolCount} tools`);
+        if (meta.length) html += `<div class="card-count">${meta.join(" · ")}</div>`;
+        html += `</div>`;
+      });
+      html += `</div></div>`;
+    }
+
+    return html;
+  }
+
+  /** Render a code block */
+  function renderCodeBlock(code, lang) {
+    const id = "cb_" + Math.random().toString(36).substr(2, 9);
+    return `<div class="code-block"><div class="code-block-header"><span class="code-block-lang">${escapeHTML(lang)}</span><button class="code-block-copy" data-code-id="${id}">📋 Copy</button></div><pre id="${id}">${highlightSyntax(escapeHTML(code), lang)}</pre></div>`;
+  }
+
+  /** Simple syntax highlighting */
+  function highlightSyntax(code, lang) {
+    // Comments
+    code = code.replace(/(#[^\n]*)/g, '<span class="comment">$1</span>');
+    // Strings
+    code = code.replace(/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|"[^"]*?"|'[^']*?')/g, '<span class="string">$1</span>');
+    // Flags (bash)
+    if (lang === "bash") {
+      code = code.replace(/(\s)(--?[a-zA-Z][\w-]*)/g, '$1<span class="flag">$2</span>');
+    }
+    // R/bash keywords
+    const keywords = lang === "r"
+      ? ["library", "install\\.packages", "BiocManager", "if", "else", "for", "while", "function", "return", "TRUE", "FALSE", "NULL", "NA", "require"]
+      : ["sudo", "conda", "pip", "wget", "curl", "export", "mkdir", "cp", "mv", "rm", "cd", "cat", "echo", "for", "do", "done", "if", "then", "fi", "tar"];
+    keywords.forEach(kw => {
+      const re = new RegExp(`\\b(${kw})\\b`, "g");
+      code = code.replace(re, '<span class="keyword">$1</span>');
+    });
+    return code;
+  }
+
+
+  // ==============================================================
+  //  SECTION 8: EVENT LISTENERS FOR CONTENT
+  // ==============================================================
+
+  function attachContentListeners() {
+    // Landing card navigation
+    attachLandingCardListeners();
+
+    // Copy buttons
+    $$(".code-block-copy").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const codeId = btn.dataset.codeId;
+        const codeEl = $(`#${codeId}`);
+        if (!codeEl) return;
+        const text = codeEl.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          btn.textContent = "✓ Copied!";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = "📋 Copy";
+            btn.classList.remove("copied");
+          }, 2000);
+        }).catch(() => {
+          // Fallback
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          btn.textContent = "✓ Copied!";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = "📋 Copy";
+            btn.classList.remove("copied");
+          }, 2000);
+        });
+      });
+    });
+
+    // Error toggles
+    $$(".error-header").forEach(header => {
+      header.addEventListener("click", () => {
+        const eid = header.dataset.eid;
+        const sol = $(`#sol_${eid}`);
+        const tog = $(`#toggle_${eid}`);
+        if (sol) {
+          sol.classList.toggle("open");
+          if (tog) tog.classList.toggle("open");
+        }
+      });
+    });
+  }
+
+  function attachLandingCardListeners() {
+    $$(".landing-card[data-nav-id]").forEach(card => {
+      card.addEventListener("click", () => {
+        const targetId = card.dataset.navId;
+        navigateTo(targetId);
+      });
+    });
+  }
+
+  function navigateTo(id) {
+    // Expand ancestry
+    const ancestry = getAncestry(id);
+    if (ancestry) {
+      ancestry.forEach(n => state.expandedNodes.add(n.id));
+    }
     state.activeNodeId = id;
-
-    // expand parents
-    const path = getPathTo(id);
-    if (path) {
-        path.forEach(p => state.expandedNodes.add(p.id));
-        state.breadcrumb = path.map(p => ({ id: p.id, label: (p.icon || '') + ' ' + p.label }));
-    }
-
     renderTree();
     renderContent(id);
-    updateBreadcrumb();
-
-    // scroll sidebar active into view
-    const active = $('.tree-node-header.active', $('#treeContainer'));
-    if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-
-    // scroll content to top
-    $('#contentPanel').scrollTop = 0;
-}
-
-/* --- render content panel --- */
-function renderContent(id) {
-    const panel = $('#contentPanel');
-    if (CONTENT[id]) {
-        panel.innerHTML = CONTENT[id]();
-    } else {
-        // default fallback: show node info + children cards
-        const node = findNode(id);
-        if (!node) { panel.innerHTML = '<p>Node not found.</p>'; return; }
-
-        let html = sectionCard(`
-            <h2>${node.icon || '📄'} ${node.label}</h2>
-            <p style="color:var(--text-muted);">Detailed content for this topic is being developed. Explore the sub-topics below.</p>
-            ${node.children ? `
-            <div class="landing-grid">
-                ${node.children.map(c => `
-                <div class="landing-card ${c.colorClass || node.colorClass || ''}" onclick="navigateTo('${c.id}')">
-                    <div class="card-icon">${c.icon || '📄'}</div>
-                    <div class="card-title">${c.label}</div>
-                    ${c.children ? `<div class="card-count">${c.children.length} sub-topics</div>` : ''}
-                </div>`).join('')}
-            </div>` : ''}
-        `);
-        panel.innerHTML = html;
-    }
-}
-
-/* --- breadcrumb --- */
-function updateBreadcrumb() {
-    const bc = $('#breadcrumb .breadcrumb-inner');
-    bc.innerHTML = state.breadcrumb.map((b, i) => {
-        if (i === state.breadcrumb.length - 1) {
-            return `<span class="breadcrumb-current">${b.label}</span>`;
-        }
-        return `<span class="breadcrumb-item" onclick="navigateTo('${b.id}')">${b.label}</span>
-                <span class="breadcrumb-separator">›</span>`;
-    }).join('');
-}
-
-/* --- search --- */
-function initSearch() {
-    const modal = $('#searchModal');
-    const modalInput = $('#modalSearchInput');
-    const modalResults = $('#modalSearchResults');
-    const headerInput = $('#searchInput');
-
-    function openModal() {
-        modal.classList.add('open');
-        setTimeout(() => modalInput.focus(), 100);
-    }
-    function closeModal() {
-        modal.classList.remove('open');
-        modalInput.value = '';
-        modalResults.innerHTML = '<div class="search-empty"><p>Start typing to search across all bioinformatics topics, tools, and workflows.</p></div>';
-    }
-
-    // open via header search click
-    headerInput.addEventListener('focus', (e) => { e.target.blur(); openModal(); });
-
-    // Ctrl+K
-    document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openModal(); }
-        if (e.key === 'Escape') closeModal();
-    });
-
-    // close on overlay click
-    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-
-    // search logic
-    modalInput.addEventListener('input', debounce(() => {
-        const q = modalInput.value.trim().toLowerCase();
-        if (!q) {
-            modalResults.innerHTML = '<div class="search-empty"><p>Start typing to search…</p></div>';
-            return;
-        }
-        const results = state.nodeIndex.filter(n =>
-            n.label.toLowerCase().includes(q) || n.path.toLowerCase().includes(q)
-        ).slice(0, 20);
-
-        if (results.length === 0) {
-            modalResults.innerHTML = '<div class="search-empty"><p>No results found for "' + escapeHtml(q) + '".</p></div>';
-            return;
-        }
-
-        modalResults.innerHTML = results.map(r => `
-            <div class="search-result-item" onclick="navigateTo('${r.id}'); document.getElementById('searchModal').classList.remove('open');">
-                <span class="result-icon">${r.icon}</span>
-                <div class="result-info">
-                    <div class="result-title">${r.label}</div>
-                    <div class="result-path">${r.path}</div>
-                </div>
-                <span class="result-arrow">→</span>
-            </div>
-        `).join('');
-    }, 150));
-}
-
-/* --- theme --- */
-function initTheme() {
-    const btn = $('#themeToggle');
-    const apply = () => {
-        document.documentElement.setAttribute('data-theme', state.theme);
-        localStorage.setItem('bioinfo-theme', state.theme);
-    };
-    apply();
-    btn.addEventListener('click', () => {
-        state.theme = state.theme === 'dark' ? 'light' : 'dark';
-        apply();
-    });
-}
-
-/* --- sidebar resize --- */
-function initResize() {
-    const handle = $('#resizeHandle');
-    const sidebar = $('#sidebar');
-    let isResizing = false;
-
-    handle.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        handle.classList.add('active');
-        document.body.style.cursor = 'col-resize';
-        document.body.style.userSelect = 'none';
-        e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        let w = e.clientX;
-        w = Math.max(280, Math.min(600, w));
-        sidebar.style.width = w + 'px';
-        state.sidebarWidth = w;
-    });
-
-    document.addEventListener('mouseup', () => {
-        if (!isResizing) return;
-        isResizing = false;
-        handle.classList.remove('active');
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-        localStorage.setItem('bioinfo-sidebar', state.sidebarWidth);
-    });
-
-    sidebar.style.width = state.sidebarWidth + 'px';
-}
-
-/* --- scroll to top --- */
-function initScrollTop() {
-    const btn = $('#scrollTop');
-    const panel = $('#contentPanel');
-    panel.addEventListener('scroll', () => {
-        btn.classList.toggle('visible', panel.scrollTop > 400);
-    });
-    btn.addEventListener('click', () => {
-        panel.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-}
-
-/* --- collapse / expand all --- */
-function initTreeControls() {
-    $('#collapseAll').addEventListener('click', () => {
-        state.expandedNodes.clear();
-        state.expandedNodes.add('root');
-        renderTree();
-    });
-    $('#expandAll').addEventListener('click', () => {
-        (function addAll(node) {
-            state.expandedNodes.add(node.id);
-            if (node.children) node.children.forEach(addAll);
-        })(TREE_DATA);
-        renderTree();
-    });
-}
-
-/* --- loader --- */
-function initLoader() {
+    updateBreadcrumb(id);
+    // Scroll tree to active node
     setTimeout(() => {
-        $('#loader').classList.add('hidden');
-    }, 800);
-}
-
-/* --- footer stats --- */
-function updateStats() {
-    let topics = 0, tools = 0, workflows = 0;
-    (function count(node) {
-        topics++;
-        if (node.children) node.children.forEach(count);
-    })(TREE_DATA);
-    tools = Object.keys(CONTENT).length;
-    workflows = Math.floor(tools * 0.6);
-    const te = $('#totalTopics'); if (te) te.textContent = topics;
-    const to = $('#totalTools'); if (to) to.textContent = tools;
-    const tw = $('#totalWorkflows'); if (tw) tw.textContent = workflows;
-}
-
-// ============================================================
-//  END OF PART 1 — Parts 2-5 continue below.
-//  (concatenate all parts into one script.js)
-// ============================================================
-// ================================================================
-// PART 3: EXTENDED KNOWLEDGE DATA — Phylogenetics, Metagenomics,
-//         Structural Bioinformatics, Comparative Genomics,
-//         Systems Biology, and more sub-nodes
-// ================================================================
-
-// ----------------------------------------------------------------
-// 3A. PHYLOGENETICS & PHYLOGENOMICS (continued / detailed children)
-// ----------------------------------------------------------------
-
-const phylogeneticsChildren = [
-    {
-        id: "phylo_concepts",
-        label: "Core Concepts",
-        icon: "📖",
-        children: [],
-        content: {
-            title: "Phylogenetic Core Concepts",
-            breadcrumb: ["Bioinformatics", "Phylogenetics & Phylogenomics", "Core Concepts"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is Phylogenetics?",
-                    body: `Phylogenetics is the study of evolutionary relationships among biological entities 
-                    — often species, populations, or genes — through molecular sequencing data and morphological 
-                    characteristics. A phylogenetic tree (or phylogeny) represents the evolutionary history and 
-                    divergence of organisms from common ancestors.`
-                },
-                {
-                    type: "questions",
-                    title: "Biological Questions Answered",
-                    items: [
-                        "How are organisms evolutionarily related?",
-                        "When did two species diverge from a common ancestor?",
-                        "What is the evolutionary origin of a gene or protein?",
-                        "Has horizontal gene transfer occurred between lineages?",
-                        "What are the rates of molecular evolution in different lineages?",
-                        "Which organisms share the most recent common ancestor?",
-                        "How do we classify newly discovered species?"
-                    ]
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>🌳 Key Terminology</h3>
-                    <div class="table-wrapper">
-                        <table class="comparison-table">
-                            <thead>
-                                <tr>
-                                    <th>Term</th>
-                                    <th>Definition</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr><td><strong>Taxon (Taxa)</strong></td><td>A named group of organisms (e.g., species, genus)</td></tr>
-                                <tr><td><strong>Clade</strong></td><td>A group consisting of an ancestor and all its descendants</td></tr>
-                                <tr><td><strong>Node</strong></td><td>A point in a tree representing a divergence event (speciation)</td></tr>
-                                <tr><td><strong>Branch</strong></td><td>A line connecting nodes; length can represent evolutionary distance or time</td></tr>
-                                <tr><td><strong>Root</strong></td><td>The common ancestor of all taxa in the tree</td></tr>
-                                <tr><td><strong>Outgroup</strong></td><td>A taxon outside the group of interest, used to root the tree</td></tr>
-                                <tr><td><strong>Monophyletic</strong></td><td>A group that includes an ancestor and ALL its descendants</td></tr>
-                                <tr><td><strong>Paraphyletic</strong></td><td>A group including an ancestor but NOT all descendants</td></tr>
-                                <tr><td><strong>Polyphyletic</strong></td><td>A group whose members don't share a recent common ancestor</td></tr>
-                                <tr><td><strong>Bootstrap</strong></td><td>Statistical support for a node (resampling method)</td></tr>
-                                <tr><td><strong>Homology</strong></td><td>Similarity due to shared ancestry</td></tr>
-                                <tr><td><strong>Orthologs</strong></td><td>Genes in different species from a common ancestor (speciation)</td></tr>
-                                <tr><td><strong>Paralogs</strong></td><td>Genes within a species from gene duplication</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <h3>📐 Types of Phylogenetic Trees</h3>
-                    <ul>
-                        <li><strong>Rooted Tree:</strong> Has a single node (root) representing the common ancestor. Direction of evolution is clear.</li>
-                        <li><strong>Unrooted Tree:</strong> Shows relationships but doesn't indicate direction of evolution or common ancestor.</li>
-                        <li><strong>Cladogram:</strong> Branch lengths have no meaning; only topology matters.</li>
-                        <li><strong>Phylogram:</strong> Branch lengths proportional to amount of evolutionary change.</li>
-                        <li><strong>Chronogram / Ultrametric Tree:</strong> Branch lengths proportional to time (all tips equidistant from root).</li>
-                    </ul>
-                    `
-                },
-                {
-                    type: "math",
-                    title: "Substitution Models",
-                    body: `
-                    <p>Substitution models describe how nucleotides or amino acids change over evolutionary time.</p>
-                    <h4>Jukes-Cantor (JC69) Model</h4>
-                    <p>Simplest model — assumes equal base frequencies and equal substitution rates:</p>
-                    <div class="formula">d = -(3/4) × ln(1 - (4/3) × p)</div>
-                    <p>Where <em>d</em> = evolutionary distance, <em>p</em> = proportion of sites that differ.</p>
-                    
-                    <h4>Kimura 2-Parameter (K2P) Model</h4>
-                    <p>Distinguishes between transitions (purine↔purine, pyrimidine↔pyrimidine) and transversions (purine↔pyrimidine):</p>
-                    <div class="formula">d = -(1/2) × ln(1 - 2P - Q) - (1/4) × ln(1 - 2Q)</div>
-                    <p>Where <em>P</em> = proportion of transitional differences, <em>Q</em> = proportion of transversional differences.</p>
-                    
-                    <h4>General Time Reversible (GTR) Model</h4>
-                    <p>Most general neutral model — allows different rates for all substitution types and unequal base frequencies. Has 6 rate parameters + 3 frequency parameters = 9 free parameters.</p>
-                    
-                    <h4>Rate Heterogeneity</h4>
-                    <p>Real sequences don't evolve uniformly. The <strong>Gamma (Γ) distribution</strong> models among-site rate variation:</p>
-                    <div class="formula">GTR + Γ + I (Gamma distribution with Invariant sites)</div>
-                    <p>The shape parameter <em>α</em> controls the distribution: small α = high rate variation; large α = nearly uniform rates.</p>
-                    `
-                }
-            ]
-        }
-    },
-    {
-        id: "tree_construction",
-        label: "Tree Construction Methods",
-        icon: "🔨",
-        children: [
-            {
-                id: "distance_methods",
-                label: "Distance-Based Methods",
-                icon: "📏",
-                children: [],
-                content: {
-                    title: "Distance-Based Phylogenetic Methods",
-                    breadcrumb: ["Bioinformatics", "Phylogenetics", "Tree Construction", "Distance-Based Methods"],
-                    sections: [
-                        {
-                            type: "definition",
-                            title: "Overview",
-                            body: `Distance-based methods compute a pairwise distance matrix from sequence alignments, 
-                            then use clustering algorithms to build the tree. They are fast but may lose information 
-                            by reducing sequences to single distance values.`
-                        },
-                        {
-                            type: "html",
-                            body: `
-                            <h3>UPGMA (Unweighted Pair Group Method with Arithmetic Mean)</h3>
-                            <ul>
-                                <li>Assumes a <strong>molecular clock</strong> (constant rate of evolution)</li>
-                                <li>Produces an <strong>ultrametric/rooted</strong> tree</li>
-                                <li>Agglomerative hierarchical clustering</li>
-                                <li>⚠️ Rarely used for phylogenetics now — clock assumption usually violated</li>
-                            </ul>
-                            
-                            <h3>Neighbor-Joining (NJ)</h3>
-                            <ul>
-                                <li>Does <strong>NOT</strong> assume a molecular clock</li>
-                                <li>Produces an <strong>unrooted</strong> tree</li>
-                                <li>Star decomposition — starts with all taxa connected to one node</li>
-                                <li>Iteratively joins neighbors that minimize total branch length</li>
-                                <li>Time complexity: O(n³)</li>
-                                <li>✅ Good for large datasets as initial tree / quick overview</li>
-                            </ul>
-                            
-                            <h3>Minimum Evolution (ME)</h3>
-                            <ul>
-                                <li>Finds the tree with the smallest sum of branch lengths</li>
-                                <li>NJ is a fast approximation of ME</li>
-                            </ul>
-                            `
-                        },
-                        {
-                            type: "code",
-                            language: "r",
-                            title: "Neighbor-Joining Tree in R (ape package)",
-                            code: `# Install and load packages
-if (!require("ape")) install.packages("ape")
-if (!require("phangorn")) install.packages("phangorn")
-library(ape)
-library(phangorn)
-
-# Read aligned sequences (FASTA format)
-sequences <- read.FASTA("aligned_sequences.fasta")
-
-# OR read from phyDat format
-sequences_phydat <- read.phyDat("aligned_sequences.fasta", format = "fasta")
-
-# Compute distance matrix using Kimura 2-Parameter model
-dist_matrix <- dist.dna(sequences, model = "K80")  # K80 = K2P
-
-# Build Neighbor-Joining tree
-nj_tree <- nj(dist_matrix)
-
-# Root the tree with an outgroup
-rooted_tree <- root(nj_tree, outgroup = "Outgroup_Species", resolve.root = TRUE)
-
-# Bootstrap analysis (1000 replicates)
-set.seed(42)
-bootstrap_nj <- boot.phylo(
-    nj_tree, 
-    sequences, 
-    FUN = function(x) nj(dist.dna(x, model = "K80")),
-    B = 1000,
-    quiet = TRUE
-)
-
-# Plot tree with bootstrap values
-plot(rooted_tree, type = "phylogram", cex = 0.8, main = "NJ Tree (K2P)")
-nodelabels(bootstrap_nj, cex = 0.6, bg = "lightyellow", frame = "rect")
-add.scale.bar()
-
-# Save tree in Newick format
-write.tree(rooted_tree, file = "nj_tree.nwk")
-
-# Save as PDF
-pdf("nj_phylogeny.pdf", width = 12, height = 10)
-plot(rooted_tree, type = "phylogram", cex = 0.7, edge.width = 2)
-nodelabels(bootstrap_nj, cex = 0.5, bg = ifelse(bootstrap_nj > 70, "lightgreen", "lightyellow"))
-add.scale.bar()
-dev.off()`
-                        },
-                        {
-                            type: "interpretation",
-                            title: "How to Interpret",
-                            body: `
-                            <ul>
-                                <li><strong>Branch lengths</strong> represent evolutionary distance (substitutions per site)</li>
-                                <li><strong>Bootstrap values ≥ 70%</strong> are generally considered well-supported</li>
-                                <li><strong>Bootstrap ≥ 95%</strong> is considered strongly supported</li>
-                                <li>Closely grouped taxa on the same clade share more recent common ancestors</li>
-                                <li>NJ trees are unrooted — you must specify an outgroup to root them</li>
-                            </ul>`
-                        }
-                    ]
-                }
-            },
-            {
-                id: "parsimony_methods",
-                label: "Maximum Parsimony",
-                icon: "✂️",
-                children: [],
-                content: {
-                    title: "Maximum Parsimony",
-                    breadcrumb: ["Bioinformatics", "Phylogenetics", "Tree Construction", "Maximum Parsimony"],
-                    sections: [
-                        {
-                            type: "definition",
-                            title: "Overview",
-                            body: `Maximum Parsimony (MP) finds the tree that requires the fewest evolutionary 
-                            changes (substitutions) to explain the observed data. Based on Occam's Razor — 
-                            the simplest explanation is preferred.`
-                        },
-                        {
-                            type: "html",
-                            body: `
-                            <h3>Key Features</h3>
-                            <ul>
-                                <li>Character-based method (uses actual sequence data, not distances)</li>
-                                <li>Counts minimum number of substitutions for each possible tree</li>
-                                <li>NP-hard problem — heuristic searches needed for >20 taxa</li>
-                                <li>Sensitive to <strong>long-branch attraction</strong> artifact</li>
-                                <li>Works well when evolutionary rates are low and uniform</li>
-                            </ul>
-                            
-                            <h3>Informative Sites</h3>
-                            <p>Only <strong>parsimony-informative sites</strong> affect tree selection:</p>
-                            <ul>
-                                <li>Must have at least 2 different character states</li>
-                                <li>At least 2 of these states must occur in ≥ 2 taxa</li>
-                                <li>Invariant sites and singletons (autapomorphies) don't help choose among trees</li>
-                            </ul>
-                            `
-                        },
-                        {
-                            type: "warning",
-                            title: "Long-Branch Attraction (LBA)",
-                            body: `When two lineages evolve rapidly, they may accumulate similar changes by 
-                            convergence. Parsimony incorrectly groups them together. Solutions: use ML/Bayesian 
-                            methods, remove long-branch taxa, or use amino acid data instead of nucleotides.`
-                        },
-                        {
-                            type: "code",
-                            language: "r",
-                            title: "Maximum Parsimony in R (phangorn)",
-                            code: `library(phangorn)
-
-# Read alignment
-alignment <- read.phyDat("aligned_sequences.fasta", format = "fasta")
-
-# Generate starting tree (NJ)
-dm <- dist.ml(alignment)
-start_tree <- NJ(dm)
-
-# Parsimony score of starting tree
-parsimony(start_tree, alignment)
-
-# Optimize tree using parsimony ratchet
-# (more thorough search than simple heuristics)
-mp_tree <- pratchet(
-    alignment,
-    start = start_tree,
-    minit = 100,      # minimum iterations
-    maxit = 1000,      # maximum iterations
-    k = 10,            # number of ratchet iterations
-    trace = 1
-)
-
-# Get parsimony score
-parsimony(mp_tree, alignment)
-
-# Bootstrap
-set.seed(42)
-bs_mp <- bootstrap.phyDat(alignment, pratchet, bs = 100)
-
-# Plot with bootstrap
-plotBS(midpoint(mp_tree), bs_mp, type = "phylogram", 
-       bs.col = "red", cex = 0.7, p = 50)
-add.scale.bar()
-
-# Consensus tree
-consensus_tree <- consensus(bs_mp, p = 0.5)  # majority-rule
-plot(consensus_tree, main = "50% Majority-Rule Consensus")`
-                        }
-                    ]
-                }
-            },
-            {
-                id: "ml_methods",
-                label: "Maximum Likelihood",
-                icon: "📊",
-                children: [],
-                content: {
-                    title: "Maximum Likelihood Phylogenetics",
-                    breadcrumb: ["Bioinformatics", "Phylogenetics", "Tree Construction", "Maximum Likelihood"],
-                    sections: [
-                        {
-                            type: "definition",
-                            title: "Overview",
-                            body: `Maximum Likelihood (ML) evaluates the probability of observing the sequence 
-                            data given a particular tree topology, branch lengths, and substitution model. 
-                            The tree that maximizes this likelihood is selected. It is statistically rigorous 
-                            and the most widely used method in modern phylogenetics.`
-                        },
-                        {
-                            type: "math",
-                            title: "The Likelihood Function",
-                            body: `
-                            <p>For a tree T with parameters θ (branch lengths + model parameters):</p>
-                            <div class="formula">L(T, θ | D) = P(D | T, θ) = ∏<sub>sites</sub> P(site pattern | T, θ)</div>
-                            <p>In practice, we compute the <strong>log-likelihood</strong> (sum instead of product):</p>
-                            <div class="formula">ln L = Σ<sub>i=1</sub><sup>n</sup> ln P(x<sub>i</sub> | T, θ)</div>
-                            <p>Felsenstein's pruning algorithm computes site likelihoods efficiently in O(n × s × k²) time, 
-                            where n = number of taxa, s = number of sites, k = alphabet size.</p>
-                            `
-                        },
-                        {
-                            type: "html",
-                            body: `
-                            <h3>🛠️ Major ML Software</h3>
-                            <div class="table-wrapper">
-                                <table class="comparison-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Tool</th>
-                                            <th>Speed</th>
-                                            <th>Key Features</th>
-                                            <th>Best For</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td><strong>RAxML-NG</strong></td>
-                                            <td>Very Fast</td>
-                                            <td>Parallelized, auto model selection, bootstrap</td>
-                                            <td>Large datasets, production runs</td>
-                                        </tr>
-                                        <tr>
-                                            <td><strong>IQ-TREE 2</strong></td>
-                                            <td>Fast</td>
-                                            <td>ModelFinder, ultrafast bootstrap, concordance factors</td>
-                                            <td>Model selection + phylogeny in one</td>
-                                        </tr>
-                                        <tr>
-                                            <td><strong>PhyML</strong></td>
-                                            <td>Moderate</td>
-                                            <td>NNI/SPR search, aLRT support</td>
-                                            <td>Medium datasets</td>
-                                        </tr>
-                                        <tr>
-                                            <td><strong>MEGA</strong></td>
-                                            <td>Moderate</td>
-                                            <td>GUI-based, educational</td>
-                                            <td>Teaching, small datasets</td>
-                                        </tr>
-                                        <tr>
-                                            <td><strong>GARLI</strong></td>
-                                            <td>Moderate</td>
-                                            <td>Genetic algorithm search</td>
-                                            <td>Complex search spaces</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            `
-                        },
-                        {
-                            type: "code",
-                            language: "bash",
-                            title: "RAxML-NG: Complete ML Phylogeny Workflow",
-                            code: `# ============================================
-# RAxML-NG Installation & ML Tree Construction
-# ============================================
-
-# --- Step 1: Install RAxML-NG ---
-# Option A: Conda (recommended)
-conda install -c bioconda raxml-ng
-
-# Option B: From GitHub releases
-wget https://github.com/amkozlov/raxml-ng/releases/download/1.2.0/raxml-ng_v1.2.0_linux_x86_64.zip
-unzip raxml-ng_v1.2.0_linux_x86_64.zip
-chmod +x raxml-ng
-sudo mv raxml-ng /usr/local/bin/
-
-# --- Step 2: Check alignment ---
-raxml-ng --check \\
-    --msa aligned_sequences.fasta \\
-    --model GTR+G \\
-    --prefix check
-
-# --- Step 3: Determine best substitution model ---
-# (Alternatively use ModelTest-NG or IQ-TREE ModelFinder)
-# For DNA:  JC, K80, HKY, GTR  (+G for gamma, +I for invariant sites)
-# For protein: LG, WAG, JTT, DAYHOFF
-
-# --- Step 4: ML tree search (20 starting trees) ---
-raxml-ng --search \\
-    --msa aligned_sequences.fasta \\
-    --model GTR+G4+I \\
-    --prefix ml_search \\
-    --threads auto{4} \\
-    --seed 42 \\
-    --tree pars{10},rand{10}
-
-# --- Step 5: Bootstrap analysis (1000 replicates) ---
-raxml-ng --bootstrap \\
-    --msa aligned_sequences.fasta \\
-    --model GTR+G4+I \\
-    --prefix ml_bootstrap \\
-    --threads auto{4} \\
-    --seed 42 \\
-    --bs-trees 1000
-
-# --- Step 6: Check bootstrap convergence ---
-raxml-ng --bsconverge \\
-    --bs-trees ml_bootstrap.raxml.bootstraps \\
-    --prefix convergence \\
-    --seed 42
-
-# --- Step 7: Map bootstrap support onto best ML tree ---
-raxml-ng --support \\
-    --tree ml_search.raxml.bestTree \\
-    --bs-trees ml_bootstrap.raxml.bootstraps \\
-    --prefix final_tree \\
-    --threads 2
-
-# --- Step 8: All-in-one command ---
-raxml-ng --all \\
-    --msa aligned_sequences.fasta \\
-    --model GTR+G4+I \\
-    --prefix full_analysis \\
-    --threads auto{4} \\
-    --seed 42 \\
-    --tree pars{10},rand{10} \\
-    --bs-trees 1000
-
-# Output files:
-# full_analysis.raxml.bestTree     - Best ML tree
-# full_analysis.raxml.support      - Tree with bootstrap values
-# full_analysis.raxml.bootstraps   - All bootstrap trees
-# full_analysis.raxml.log          - Log file`
-                        },
-                        {
-                            type: "code",
-                            language: "bash",
-                            title: "IQ-TREE 2: ML with Automatic Model Selection",
-                            code: `# ============================================
-# IQ-TREE 2 Installation & Usage
-# ============================================
-
-# --- Install ---
-conda install -c bioconda iqtree
-
-# --- All-in-one: Model selection + ML tree + Bootstrap ---
-iqtree2 -s aligned_sequences.fasta \\
-    -m MFP \\               # ModelFinder Plus (auto model selection)
-    -B 1000 \\              # Ultrafast bootstrap (UFBoot2)
-    -alrt 1000 \\           # SH-aLRT test (1000 replicates)
-    -T AUTO \\              # Auto-detect threads
-    --prefix iqtree_result \\
-    -seed 42
-
-# -m MFP tests hundreds of models and selects the best one (BIC)
-# UFBoot2 values >= 95 are well-supported
-# SH-aLRT values >= 80 are well-supported
-
-# --- For protein sequences ---
-iqtree2 -s protein_alignment.fasta \\
-    -st AA \\               # Sequence type: Amino Acid
-    -m MFP \\
-    -B 1000 \\
-    -alrt 1000 \\
-    -T AUTO
-
-# --- Partition analysis (different genes evolve differently) ---
-iqtree2 -s concatenated_genes.fasta \\
-    -p partition_file.nex \\  # NEXUS partition file
-    -m MFP+MERGE \\           # Find best partition scheme
-    -B 1000 \\
-    -T AUTO
-
-# Output files:
-# iqtree_result.iqtree    - Full report (model, tree, stats)
-# iqtree_result.treefile  - Best ML tree (Newick)
-# iqtree_result.contree   - Consensus tree with support values
-# iqtree_result.log       - Screen log
-# iqtree_result.model.gz  - Model parameters`
-                        },
-                        {
-                            type: "errors",
-                            title: "Common Errors & Solutions",
-                            items: [
-                                {
-                                    error: "ERROR: Alignment has undetermined columns",
-                                    solution: `Some columns contain only gaps or ambiguous characters. 
-                                    Solution: trim alignment with trimAl: \`trimal -in alignment.fasta -out trimmed.fasta -automated1\``
-                                },
-                                {
-                                    error: "ERROR: Duplicate sequence names found",
-                                    solution: `Two or more sequences share the same header. Ensure all FASTA headers 
-                                    are unique. Use: \`grep ">" alignment.fasta | sort | uniq -d\` to find duplicates.`
-                                },
-                                {
-                                    error: "WARNING: bootstrap support values below 50% on many nodes",
-                                    solution: `Possible causes: poor alignment, insufficient phylogenetic signal, 
-                                    wrong substitution model, or conflicting signal (e.g., HGT). Try: re-align 
-                                    with MAFFT, use ModelFinder, or remove poorly aligned regions with Gblocks/trimAl.`
-                                },
-                                {
-                                    error: "Segmentation fault with large alignment",
-                                    solution: `Memory issue. Solutions: use --threads auto{N} to limit threads, 
-                                    use --mem flag to set memory limit, or subsample taxa.`
-                                }
-                            ]
-                        },
-                        {
-                            type: "interpretation",
-                            title: "Interpreting ML Trees",
-                            body: `
-                            <ul>
-                                <li><strong>Log-likelihood:</strong> Higher (less negative) = better fit. Compare models using AIC/BIC.</li>
-                                <li><strong>UFBoot ≥ 95%:</strong> Strong support (for IQ-TREE ultrafast bootstrap)</li>
-                                <li><strong>Standard Bootstrap ≥ 70%:</strong> Generally reliable support</li>
-                                <li><strong>SH-aLRT ≥ 80%:</strong> Supported by approximate likelihood ratio test</li>
-                                <li><strong>Branch lengths:</strong> Number of expected substitutions per site</li>
-                                <li><strong>Long branches:</strong> May indicate fast evolution or long time since divergence — beware of LBA</li>
-                                <li>Always report both the model used and support values</li>
-                            </ul>`
-                        }
-                    ]
-                }
-            },
-            {
-                id: "bayesian_methods",
-                label: "Bayesian Inference",
-                icon: "🎲",
-                children: [],
-                content: {
-                    title: "Bayesian Phylogenetic Inference",
-                    breadcrumb: ["Bioinformatics", "Phylogenetics", "Tree Construction", "Bayesian Inference"],
-                    sections: [
-                        {
-                            type: "definition",
-                            title: "Overview",
-                            body: `Bayesian inference uses Bayes' theorem to estimate the posterior probability 
-                            distribution of phylogenetic trees. It combines the likelihood of the data with 
-                            prior probabilities using Markov Chain Monte Carlo (MCMC) sampling. Results 
-                            provide posterior probabilities for clades — directly interpretable as probability 
-                            that a clade is correct.`
-                        },
-                        {
-                            type: "math",
-                            title: "Bayes' Theorem in Phylogenetics",
-                            body: `
-                            <div class="formula">P(Tree | Data) = P(Data | Tree) × P(Tree) / P(Data)</div>
-                            <p>Where:</p>
-                            <ul>
-                                <li><strong>P(Tree | Data)</strong> = Posterior probability (what we want)</li>
-                                <li><strong>P(Data | Tree)</strong> = Likelihood (same as ML)</li>
-                                <li><strong>P(Tree)</strong> = Prior probability of tree topology & parameters</li>
-                                <li><strong>P(Data)</strong> = Marginal likelihood (normalizing constant, usually intractable)</li>
-                            </ul>
-                            <p>MCMC sampling explores tree space proportional to posterior probability, avoiding the need to compute P(Data) directly.</p>
-                            `
-                        },
-                        {
-                            type: "code",
-                            language: "bash",
-                            title: "MrBayes: Bayesian Phylogenetic Analysis",
-                            code: `# ============================================
-# MrBayes Installation & Usage
-# ============================================
-
-# --- Install ---
-conda install -c bioconda mrbayes
-
-# --- Create NEXUS file with MrBayes block ---
-cat > analysis.nex << 'EOF'
-#NEXUS
-begin data;
-    dimensions ntax=20 nchar=500;
-    format datatype=dna gap=- missing=?;
-    matrix
-    [paste your aligned sequences here]
-    ;
-end;
-
-begin mrbayes;
-    [Set substitution model]
-    lset nst=6 rates=invgamma;     [GTR+I+G]
-    
-    [Set priors]
-    prset brlenspr=unconstrained:exp(10.0);
-    prset shapepr=exp(1.0);
-    prset tratiopr=beta(1.0,1.0);
-    
-    [MCMC settings]
-    mcmc ngen=1000000           [1 million generations]
-         samplefreq=100         [sample every 100 gens]
-         printfreq=1000
-         nchains=4              [3 heated + 1 cold chain]
-         nruns=2                [2 independent runs]
-         temp=0.2               [heating parameter]
-         savebrlens=yes;
-    
-    [Summarize - discard first 25% as burn-in]
-    sumt burnin=2500;           [tree summary]
-    sump burnin=2500;           [parameter summary]
-end;
-EOF
-
-# --- Run MrBayes ---
-mb analysis.nex
-
-# --- OR run interactively ---
-mb
-> execute analysis.nex
-> lset nst=6 rates=invgamma
-> mcmc ngen=1000000 samplefreq=100 nchains=4 nruns=2
-> sumt
-> sump
-> quit
-
-# --- Check convergence ---
-# PSRF (Potential Scale Reduction Factor) should be ~ 1.0
-# Average standard deviation of split frequencies < 0.01 = good
-# ESS (Effective Sample Size) > 200 for all parameters
-
-# Output files:
-# analysis.nex.con.tre    - Consensus tree with posterior probabilities
-# analysis.nex.trprobs    - Tree probabilities
-# analysis.nex.pstat      - Parameter statistics`
-                        },
-                        {
-                            type: "code",
-                            language: "bash",
-                            title: "BEAST2: Bayesian Evolutionary Analysis",
-                            code: `# ============================================
-# BEAST2 — for time-calibrated phylogenies
-# ============================================
-
-# --- Install ---
-# Download from https://www.beast2.org/
-# OR
-conda install -c bioconda beast2
-
-# --- Workflow ---
-# Step 1: Prepare alignment in FASTA/NEXUS
-
-# Step 2: Configure analysis with BEAUti (GUI)
-beauti  # Opens GUI to set:
-        # - Import alignment
-        # - Set substitution model (Site Models tab)
-        # - Set clock model (Clock Model tab)
-        #   * Strict Clock
-        #   * Relaxed Clock (Uncorrelated Lognormal)
-        # - Set tree prior (Priors tab)
-        #   * Yule (speciation)
-        #   * Birth-Death
-        #   * Coalescent
-        # - Set calibration points (node age constraints)
-        # - Set MCMC chain length
-        # - Export as .xml file
-
-# Step 3: Run BEAST
-beast -threads 4 -seed 42 analysis.xml
-
-# Step 4: Check convergence with Tracer
-tracer analysis.log
-# Check: ESS > 200 for all parameters
-#         Trace plots show stationarity
-#         No trends in likelihood traces
-
-# Step 5: Summarize trees with TreeAnnotator
-treeannotator \\
-    -burnin 10 \\           # 10% burn-in
-    -heights median \\       # node heights
-    analysis.trees \\        # input trees
-    mcc_tree.tre            # output Maximum Clade Credibility tree
-
-# Step 6: Visualize with FigTree
-figtree mcc_tree.tre`
-                        },
-                        {
-                            type: "interpretation",
-                            title: "Interpreting Bayesian Results",
-                            body: `
-                            <ul>
-                                <li><strong>Posterior Probability (PP) ≥ 0.95:</strong> Strong support for a clade</li>
-                                <li><strong>PP ≥ 0.99:</strong> Very strong support</li>
-                                <li>PP values tend to be higher than bootstrap values — they are NOT equivalent!</li>
-                                <li><strong>ESS > 200:</strong> Sufficient sampling of parameter space</li>
-                                <li><strong>PSRF ≈ 1.00:</strong> Independent runs have converged</li>
-                                <li><strong>95% HPD interval:</strong> 95% Highest Posterior Density — Bayesian credible interval for parameters like divergence times</li>
-                            </ul>`
-                        }
-                    ]
-                }
-            }
-        ],
-        content: {
-            title: "Tree Construction Methods",
-            breadcrumb: ["Bioinformatics", "Phylogenetics", "Tree Construction"],
-            sections: [
-                {
-                    type: "html",
-                    body: `
-                    <h3>Overview of Phylogenetic Methods</h3>
-                    <p>Phylogenetic tree construction methods fall into four major categories:</p>
-                    
-                    <div class="table-wrapper">
-                        <table class="comparison-table">
-                            <thead>
-                                <tr>
-                                    <th>Method</th>
-                                    <th>Approach</th>
-                                    <th>Speed</th>
-                                    <th>Accuracy</th>
-                                    <th>Output</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>Distance (NJ/UPGMA)</strong></td>
-                                    <td>Pairwise distances</td>
-                                    <td>⚡ Very Fast</td>
-                                    <td>⭐⭐</td>
-                                    <td>Single tree</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Maximum Parsimony</strong></td>
-                                    <td>Min. changes</td>
-                                    <td>⚡⚡ Moderate</td>
-                                    <td>⭐⭐⭐</td>
-                                    <td>Single/multiple trees</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Maximum Likelihood</strong></td>
-                                    <td>Statistical model</td>
-                                    <td>⚡⚡⚡ Slow</td>
-                                    <td>⭐⭐⭐⭐</td>
-                                    <td>Single best tree + support</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Bayesian Inference</strong></td>
-                                    <td>Posterior probability</td>
-                                    <td>⚡⚡⚡⚡ Slowest</td>
-                                    <td>⭐⭐⭐⭐⭐</td>
-                                    <td>Distribution of trees</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    `
-                }
-            ]
-        }
-    },
-    {
-        id: "mega_phylogeny",
-        label: "MEGA Software",
-        icon: "🧮",
-        children: [],
-        content: {
-            title: "Phylogenetic Analysis with MEGA",
-            breadcrumb: ["Bioinformatics", "Phylogenetics", "MEGA Software"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is MEGA?",
-                    body: `MEGA (Molecular Evolutionary Genetics Analysis) is an integrated GUI-based software 
-                    for sequence alignment, phylogenetic tree construction, molecular dating, and evolutionary 
-                    analysis. Widely used in teaching and research. Current version: MEGA 11.`
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>📋 Step-by-Step: Building a Phylogenetic Tree in MEGA</h3>
-                    
-                    <h4>Step 1: Install MEGA</h4>
-                    <ul>
-                        <li>Download from <a href="https://www.megasoftware.net/" target="_blank">megasoftware.net</a></li>
-                        <li>Available for Windows, macOS, Linux</li>
-                        <li>MEGA-CC (command-line version) also available</li>
-                    </ul>
-                    
-                    <h4>Step 2: Obtain Sequences</h4>
-                    <ul>
-                        <li>Open MEGA → <strong>File → Open a File/Session</strong></li>
-                        <li>Or use built-in BLAST: <strong>Alignment → Query GenBank</strong></li>
-                        <li>Import FASTA, GenBank, or MEGA format sequences</li>
-                    </ul>
-                    
-                    <h4>Step 3: Align Sequences</h4>
-                    <ul>
-                        <li>Click <strong>Alignment → Align by ClustalW</strong> or <strong>MUSCLE</strong></li>
-                        <li>MUSCLE is generally preferred (faster, often more accurate)</li>
-                        <li>Review alignment — manually edit if needed</li>
-                        <li>Save alignment: <strong>Data → Save Session</strong></li>
-                    </ul>
-                    
-                    <h4>Step 4: Find Best Model</h4>
-                    <ul>
-                        <li><strong>Models → Find Best DNA/Protein Model (ML)</strong></li>
-                        <li>Uses BIC (Bayesian Information Criterion) to rank models</li>
-                        <li>Note the best model (e.g., GTR+G+I, K2+G, etc.)</li>
-                    </ul>
-                    
-                    <h4>Step 5: Build Tree</h4>
-                    <ul>
-                        <li><strong>Phylogeny → Construct/Test ML Tree</strong></li>
-                        <li>Select substitution model from Step 4</li>
-                        <li>Set bootstrap replications (1000 recommended)</li>
-                        <li>Choose gaps/missing data treatment</li>
-                        <li>Click <strong>Compute</strong></li>
-                    </ul>
-                    
-                    <h4>Step 6: Interpret & Export</h4>
-                    <ul>
-                        <li>View bootstrap values on nodes</li>
-                        <li>Root tree: Right-click outgroup → <strong>Root on this Branch</strong></li>
-                        <li>Export: <strong>Image → Save as PDF/SVG/PNG</strong></li>
-                        <li>Export Newick: <strong>File → Export Current Tree (Newick)</strong></li>
-                    </ul>
-                    `
-                },
-                {
-                    type: "tip",
-                    title: "Pro Tips for MEGA",
-                    body: `
-                    <ul>
-                        <li>Always run model selection before tree building</li>
-                        <li>Use MEGA-CC for command-line batch analysis</li>
-                        <li>For large datasets (>500 sequences), use RAxML or IQ-TREE instead</li>
-                        <li>MEGA saves sessions in .mas format — include this for reproducibility</li>
-                        <li>You can also build NJ, MP, and ME trees in MEGA</li>
-                    </ul>`
-                }
-            ]
-        }
-    },
-    {
-        id: "molecular_dating",
-        label: "Molecular Dating",
-        icon: "⏰",
-        children: [],
-        content: {
-            title: "Molecular Dating & Divergence Time Estimation",
-            breadcrumb: ["Bioinformatics", "Phylogenetics", "Molecular Dating"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is Molecular Dating?",
-                    body: `Molecular dating estimates the absolute time of divergence between lineages using 
-                    molecular sequence data and calibration points from the fossil record or biogeographic 
-                    events. It converts phylogenetic branch lengths (substitutions/site) into time units (millions of years).`
-                },
-                {
-                    type: "math",
-                    title: "The Molecular Clock Hypothesis",
-                    body: `
-                    <p>The <strong>strict molecular clock</strong> assumes a constant rate of molecular evolution across all lineages:</p>
-                    <div class="formula">d = 2 × r × t</div>
-                    <p>Where d = genetic distance, r = substitution rate, t = divergence time.</p>
-                    <p>Therefore:</p>
-                    <div class="formula">t = d / (2 × r)</div>
-                    <p>In practice, rates vary across lineages (<strong>relaxed clock models</strong>):</p>
-                    <ul>
-                        <li><strong>Uncorrelated Lognormal (UCLN):</strong> Each branch draws rate from lognormal distribution</li>
-                        <li><strong>Uncorrelated Exponential:</strong> Each branch draws rate from exponential distribution</li>
-                        <li><strong>Local Clock:</strong> Different rates for different clades</li>
-                        <li><strong>Autocorrelated:</strong> Descendant rates correlated with ancestor rates</li>
-                    </ul>
-                    `
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>🛠️ Tools for Molecular Dating</h3>
-                    <div class="tags">
-                        <span class="tag tag-tool">BEAST2</span>
-                        <span class="tag tag-tool">MEGA (RelTime)</span>
-                        <span class="tag tag-tool">MCMCTree (PAML)</span>
-                        <span class="tag tag-tool">r8s</span>
-                        <span class="tag tag-tool">treePL</span>
-                        <span class="tag tag-tool">MEGA-CC</span>
-                    </div>
-                    
-                    <h3>MEGA RelTime Method</h3>
-                    <p>RelTime is a fast method in MEGA for estimating relative and absolute divergence times:</p>
-                    <ol>
-                        <li>Build ML tree in MEGA</li>
-                        <li><strong>Timetree → Compute Timetree (RelTime-ML)</strong></li>
-                        <li>Select calibration constraints (fossil calibrations)</li>
-                        <li>Choose clock model</li>
-                        <li>View timetree with confidence intervals</li>
-                    </ol>
-                    `
-                },
-                {
-                    type: "warning",
-                    title: "Calibration is Critical",
-                    body: `The accuracy of molecular dating depends heavily on calibration points. 
-                    Always use multiple calibration points when possible, and specify them as ranges 
-                    (uniform or normal distributions), not point estimates. Fossil calibrations typically 
-                    provide minimum ages (first appearance of a clade in the fossil record).`
-                }
-            ]
-        }
-    },
-    {
-        id: "hgt_detection",
-        label: "Horizontal Gene Transfer",
-        icon: "↔️",
-        children: [],
-        content: {
-            title: "Horizontal Gene Transfer (HGT) Detection",
-            breadcrumb: ["Bioinformatics", "Phylogenetics", "Horizontal Gene Transfer"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is HGT?",
-                    body: `Horizontal Gene Transfer (HGT), also called Lateral Gene Transfer (LGT), is the 
-                    transmission of genetic material between organisms through mechanisms other than vertical 
-                    transmission (parent to offspring). Common in prokaryotes via conjugation, transformation, 
-                    and transduction. HGT complicates phylogenetic analysis because gene trees may differ from species trees.`
-                },
-                {
-                    type: "questions",
-                    title: "Questions Answered",
-                    items: [
-                        "Has a gene been horizontally transferred between species?",
-                        "What is the donor and recipient of the transferred gene?",
-                        "How prevalent is HGT in a given genome?",
-                        "Does HGT explain antibiotic resistance spread?",
-                        "What role does HGT play in microbial evolution?"
-                    ]
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>Detection Methods</h3>
-                    <div class="table-wrapper">
-                        <table class="comparison-table">
-                            <thead>
-                                <tr>
-                                    <th>Approach</th>
-                                    <th>Method</th>
-                                    <th>Tools</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>Phylogenetic</strong></td>
-                                    <td>Gene tree vs. species tree discordance</td>
-                                    <td>HGTPhyloDetect, RANGER-DTL, AnGST</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Compositional</strong></td>
-                                    <td>Unusual GC content, codon usage, k-mer frequency</td>
-                                    <td>Alien Hunter, IslandViewer, SIGI-HMM</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Distribution-based</strong></td>
-                                    <td>Patchy phylogenetic distribution</td>
-                                    <td>Count, GLOOME</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Synteny-based</strong></td>
-                                    <td>Genomic context / gene order disruption</td>
-                                    <td>Mauve, SynChro</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    `
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "HGTPhyloDetect Workflow",
-                    code: `# ============================================
-# HGTPhyloDetect: Detecting HGT via phylogenetic analysis
-# ============================================
-
-# --- Install ---
-git clone https://github.com/Xingyu-Liao/HGTPhyloDetect.git
-cd HGTPhyloDetect
-pip install -r requirements.txt
-
-# --- Prepare input ---
-# Need: protein sequences of query genome
-#        reference database (e.g., NCBI nr or custom)
-
-# --- Run HGTPhyloDetect ---
-python HGTPhyloDetect.py \\
-    --query query_proteins.fasta \\
-    --database reference_db.fasta \\
-    --output results/ \\
-    --threads 8 \\
-    --evalue 1e-10
-
-# --- Alternative: Manual phylogenetic approach ---
-# 1. BLAST gene of interest against nr database
-blastp -query gene.fasta \\
-    -db nr \\
-    -out blast_results.txt \\
-    -evalue 1e-10 \\
-    -outfmt 6 \\
-    -max_target_seqs 100
-
-# 2. Retrieve top hits and align
-# 3. Build gene tree (RAxML/IQ-TREE)
-# 4. Build species tree (concatenated markers or 16S)
-# 5. Compare topologies — incongruence suggests HGT
-
-# --- NCBI Genome Workbench ---
-# Download: https://www.ncbi.nlm.nih.gov/tools/gbench/
-# GUI tool for viewing genomic context, synteny
-# Useful for visualizing potential HGT regions`
-                        }
-                    ]
-                }
-            }
-        ];
-
-// ----------------------------------------------------------------
-// 3B. METAGENOMICS & MICROBIAL ANALYSIS
-// ----------------------------------------------------------------
-
-const metagenomicsChildren = [
-    {
-        id: "meta_concepts",
-        label: "Core Concepts",
-        icon: "📖",
-        children: [],
-        content: {
-            title: "Metagenomics Core Concepts",
-            breadcrumb: ["Bioinformatics", "Metagenomics & Microbial Analysis", "Core Concepts"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is Metagenomics?",
-                    body: `Metagenomics is the study of genetic material recovered directly from environmental 
-                    samples (soil, water, gut, skin, etc.) without culturing organisms individually. It provides 
-                    insights into microbial community composition, diversity, and functional potential.`
-                },
-                {
-                    type: "questions",
-                    title: "Biological Questions Answered",
-                    items: [
-                        "What microorganisms are present in a sample? (Who is there?)",
-                        "How diverse is the microbial community?",
-                        "What metabolic functions are encoded? (What can they do?)",
-                        "How do microbial communities differ between conditions?",
-                        "What environmental factors drive community composition?",
-                        "Are there novel organisms or genes in the environment?",
-                        "How does the microbiome relate to health/disease?"
-                    ]
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>Two Main Approaches</h3>
-                    <div class="table-wrapper">
-                        <table class="comparison-table">
-                            <thead>
-                                <tr>
-                                    <th>Feature</th>
-                                    <th>Amplicon (16S/18S/ITS)</th>
-                                    <th>Shotgun Metagenomics</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr><td><strong>Target</strong></td><td>Marker gene only</td><td>All DNA</td></tr>
-                                <tr><td><strong>Taxonomy</strong></td><td>Good (genus level)</td><td>Better (species/strain)</td></tr>
-                                <tr><td><strong>Function</strong></td><td>Predicted (PICRUSt2)</td><td>Directly measured</td></tr>
-                                <tr><td><strong>Cost</strong></td><td>Lower</td><td>Higher</td></tr>
-                                <tr><td><strong>Depth</strong></td><td>~10K-100K reads</td><td>~1M-100M reads</td></tr>
-                                <tr><td><strong>Databases</strong></td><td>SILVA, Greengenes, UNITE</td><td>NCBI nr, KEGG, UniRef</td></tr>
-                                <tr><td><strong>Rare taxa</strong></td><td>Better detection</td><td>May miss rare taxa</td></tr>
-                                <tr><td><strong>Novel organisms</strong></td><td>Limited</td><td>Can discover novel genomes</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <h3>Key Diversity Metrics</h3>
-                    <h4>Alpha Diversity (within-sample)</h4>
-                    <ul>
-                        <li><strong>Observed OTUs/ASVs:</strong> Simple richness count</li>
-                        <li><strong>Chao1:</strong> Estimated richness (accounts for unseen species)</li>
-                        <li><strong>Shannon Index (H'):</strong> Accounts for both richness and evenness</li>
-                        <li><strong>Simpson Index (D):</strong> Probability two randomly chosen individuals are different species</li>
-                        <li><strong>Faith's PD:</strong> Sum of branch lengths in phylogenetic tree</li>
-                    </ul>
-                    `
-                },
-                {
-                    type: "math",
-                    title: "Diversity Formulas",
-                    body: `
-                    <h4>Shannon Diversity Index</h4>
-                    <div class="formula">H' = -Σ<sub>i=1</sub><sup>S</sup> p<sub>i</sub> × ln(p<sub>i</sub>)</div>
-                    <p>Where S = total number of species, p<sub>i</sub> = proportion of species i. Higher H' = more diverse.</p>
-                    
-                    <h4>Simpson's Diversity Index</h4>
-                    <div class="formula">D = 1 - Σ<sub>i=1</sub><sup>S</sup> p<sub>i</sub>²</div>
-                    <p>Ranges from 0 to 1. Higher D = more diverse.</p>
-                    
-                    <h4>Chao1 Estimator</h4>
-                    <div class="formula">S<sub>Chao1</sub> = S<sub>obs</sub> + (F₁² / 2F₂)</div>
-                    <p>Where F₁ = number of singletons, F₂ = number of doubletons.</p>
-                    
-                    <h4>Beta Diversity (between-sample)</h4>
-                    <p><strong>Bray-Curtis Dissimilarity:</strong></p>
-                    <div class="formula">BC<sub>ij</sub> = 1 - (2 × C<sub>ij</sub>) / (S<sub>i</sub> + S<sub>j</sub>)</div>
-                    <p>Where C<sub>ij</sub> = sum of lesser abundances shared, S = total abundances per sample.</p>
-                    <p><strong>UniFrac:</strong> Incorporates phylogenetic distances between taxa (unique to microbial ecology).</p>
-                    `
-                }
-            ]
-        }
-    },
-    {
-        id: "qiime2_analysis",
-        label: "QIIME 2 Analysis",
-        icon: "🔬",
-        children: [],
-        content: {
-            title: "16S rRNA Analysis with QIIME 2",
-            breadcrumb: ["Bioinformatics", "Metagenomics", "QIIME 2 Analysis"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is QIIME 2?",
-                    body: `QIIME 2 (Quantitative Insights Into Microbial Ecology 2) is a powerful, extensible, 
-                    and decentralized microbiome analysis package. It provides end-to-end workflows for 
-                    amplicon sequencing data (16S, 18S, ITS) from raw reads to publication-quality statistics 
-                    and visualizations. Uses a plugin architecture and provenance tracking for reproducibility.`
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>🔄 Complete QIIME 2 Pipeline</h3>
-                    <div class="pipeline">
-                        <div class="pipeline-step"><span class="step-num">Step 1</span><span class="step-name">Import</span><span class="step-tool">qiime tools import</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 2</span><span class="step-name">QC & Denoise</span><span class="step-tool">DADA2 / Deblur</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 3</span><span class="step-name">Phylogeny</span><span class="step-tool">align-to-tree</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 4</span><span class="step-name">Taxonomy</span><span class="step-tool">classify-sklearn</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 5</span><span class="step-name">Diversity</span><span class="step-tool">core-metrics</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 6</span><span class="step-name">Statistics</span><span class="step-tool">PERMANOVA, ANCOM</span></div>
-                    </div>
-                    `
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "Complete QIIME 2 Workflow (16S rRNA)",
-                    code: `# ============================================
-# QIIME 2 — Complete 16S rRNA Analysis Pipeline
-# ============================================
-
-# --- Step 0: Install QIIME 2 ---
-wget https://data.qiime2.org/distro/amplicon/qiime2-amplicon-2024.5-py38-linux-conda.yml
-conda env create -n qiime2 --file qiime2-amplicon-2024.5-py38-linux-conda.yml
-conda activate qiime2
-
-# Verify installation
-qiime --version
-
-# --- Step 1: Import Data ---
-# For paired-end Casava 1.8 demultiplexed format:
-qiime tools import \\
-    --type 'SampleData[PairedEndSequencesWithQuality]' \\
-    --input-path raw_reads/ \\
-    --input-format CasavaOneEightSingleLanePerSampleDirFmt \\
-    --output-path demux-paired-end.qza
-
-# Visualize quality scores
-qiime demux summarize \\
-    --i-data demux-paired-end.qza \\
-    --o-visualization demux-summary.qzv
-
-# View visualization (opens browser)
-qiime tools view demux-summary.qzv
-
-# --- Step 2: Denoise with DADA2 ---
-# Check quality plots to choose trim/trunc parameters
-qiime dada2 denoise-paired \\
-    --i-demultiplexed-seqs demux-paired-end.qza \\
-    --p-trim-left-f 0 \\
-    --p-trim-left-r 0 \\
-    --p-trunc-len-f 250 \\
-    --p-trunc-len-r 200 \\
-    --p-n-threads 8 \\
-    --o-table feature-table.qza \\
-    --o-representative-sequences rep-seqs.qza \\
-    --o-denoising-stats dada2-stats.qza
-
-# View denoising stats
-qiime metadata tabulate \\
-    --m-input-file dada2-stats.qza \\
-    --o-visualization dada2-stats.qzv
-
-# Summarize feature table
-qiime feature-table summarize \\
-    --i-table feature-table.qza \\
-    --m-sample-metadata-file sample-metadata.tsv \\
-    --o-visualization table-summary.qzv
-
-# --- Step 3: Phylogenetic Tree ---
-qiime phylogeny align-to-tree-mafft-fasttree \\
-    --i-sequences rep-seqs.qza \\
-    --o-alignment aligned-rep-seqs.qza \\
-    --o-masked-alignment masked-aligned-rep-seqs.qza \\
-    --o-tree unrooted-tree.qza \\
-    --o-rooted-tree rooted-tree.qza
-
-# --- Step 4: Taxonomy Classification ---
-# Download pre-trained classifier (Silva 138.1 for V4 region)
-wget https://data.qiime2.org/2024.5/common/silva-138-99-515-806-nb-classifier.qza
-
-qiime feature-classifier classify-sklearn \\
-    --i-classifier silva-138-99-515-806-nb-classifier.qza \\
-    --i-reads rep-seqs.qza \\
-    --o-classification taxonomy.qza \\
-    --p-n-jobs 8
-
-# Visualize taxonomy
-qiime metadata tabulate \\
-    --m-input-file taxonomy.qza \\
-    --o-visualization taxonomy.qzv
-
-# Taxonomy barplot
-qiime taxa barplot \\
-    --i-table feature-table.qza \\
-    --i-taxonomy taxonomy.qza \\
-    --m-metadata-file sample-metadata.tsv \\
-    --o-visualization taxa-barplot.qzv
-
-# --- Step 5: Diversity Analysis ---
-# Determine rarefaction depth from table-summary.qzv
-qiime diversity core-metrics-phylogenetic \\
-    --i-phylogeny rooted-tree.qza \\
-    --i-table feature-table.qza \\
-    --p-sampling-depth 10000 \\
-    --m-metadata-file sample-metadata.tsv \\
-    --output-dir core-metrics-results
-
-# Alpha rarefaction curves
-qiime diversity alpha-rarefaction \\
-    --i-table feature-table.qza \\
-    --i-phylogeny rooted-tree.qza \\
-    --p-max-depth 50000 \\
-    --m-metadata-file sample-metadata.tsv \\
-    --o-visualization alpha-rarefaction.qzv
-
-# --- Step 6: Statistical Tests ---
-# Alpha diversity significance (e.g., Shannon)
-qiime diversity alpha-group-significance \\
-    --i-alpha-diversity core-metrics-results/shannon_vector.qza \\
-    --m-metadata-file sample-metadata.tsv \\
-    --o-visualization shannon-significance.qzv
-
-# Beta diversity significance (PERMANOVA)
-qiime diversity beta-group-significance \\
-    --i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \\
-    --m-metadata-file sample-metadata.tsv \\
-    --m-metadata-column treatment \\
-    --p-method permanova \\
-    --p-pairwise \\
-    --o-visualization permanova-results.qzv
-
-# --- Step 7: Differential Abundance (ANCOM-BC) ---
-qiime composition ancombc \\
-    --i-table feature-table.qza \\
-    --m-metadata-file sample-metadata.tsv \\
-    --p-formula treatment \\
-    --o-differentials ancombc-results.qza
-
-qiime composition da-barplot \\
-    --i-data ancombc-results.qza \\
-    --p-significance-threshold 0.05 \\
-    --o-visualization ancombc-barplot.qzv
-
-# --- Export results for further analysis ---
-qiime tools export \\
-    --input-path feature-table.qza \\
-    --output-path exported/
-
-biom convert \\
-    -i exported/feature-table.biom \\
-    -o exported/feature-table.tsv \\
-    --to-tsv`
-                },
-                {
-                    type: "errors",
-                    title: "Common QIIME 2 Errors",
-                    items: [
-                        {
-                            error: "Plugin error: No features remain after denoising",
-                            solution: `Trunc lengths are too aggressive. Check quality plots and increase 
-                            trunc-len values. Ensure reads have sufficient overlap for merging (typically 
-                            need ≥12 bp overlap for paired-end).`
-                        },
-                        {
-                            error: "ValueError: Metadata does not contain any sample IDs found in the feature table",
-                            solution: `Sample IDs in metadata TSV must exactly match sample IDs in the feature 
-                            table. Check for trailing whitespace, case sensitivity. Use \`qiime feature-table summarize\` 
-                            to see actual sample IDs.`
-                        },
-                        {
-                            error: "The subsampled table contains fewer samples than expected",
-                            solution: `Sampling depth is higher than the read count of some samples. Lower the 
-                            --p-sampling-depth value or remove low-depth samples from the analysis.`
-                        },
-                        {
-                            error: "Memory error during classify-sklearn",
-                            solution: `The classifier is memory-intensive. Solutions: use --p-reads-per-batch 
-                            to process fewer reads at once, increase system RAM, or use a smaller classifier 
-                            (region-specific instead of full-length).`
-                        }
-                    ]
-                },
-                {
-                    type: "interpretation",
-                    title: "Interpreting QIIME 2 Results",
-                    body: `
-                    <ul>
-                        <li><strong>Alpha diversity:</strong> Higher Shannon/Chao1 = more diverse community</li>
-                        <li><strong>Rarefaction curves:</strong> Should plateau — if not, sequencing depth may be insufficient</li>
-                        <li><strong>PCoA plots:</strong> Samples clustering together share similar community composition</li>
-                        <li><strong>PERMANOVA p < 0.05:</strong> Significant difference between groups in community composition</li>
-                        <li><strong>ANCOM-BC:</strong> Reports differentially abundant taxa with W-statistic; higher W = found significant in more comparisons</li>
-                        <li><strong>Taxonomy barplots:</strong> Visual overview; use for hypothesis generation, not quantitative comparison</li>
-                    </ul>`
-                }
-            ]
-        }
-    },
-    {
-        id: "mothur_analysis",
-        label: "mothur Analysis",
-        icon: "🦠",
-        children: [],
-        content: {
-            title: "16S rRNA Analysis with mothur",
-            breadcrumb: ["Bioinformatics", "Metagenomics", "mothur Analysis"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is mothur?",
-                    body: `mothur is an open-source bioinformatics tool for processing and analyzing 16S rRNA 
-                    gene sequences from microbial communities. Developed by Pat Schloss lab. Uses OTU-based 
-                    approach (97% similarity clustering) as well as ASVs. Has a comprehensive SOP (Standard 
-                    Operating Procedure) that is widely followed.`
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "mothur MiSeq SOP (Abbreviated)",
-                    code: `# ============================================
-# mothur MiSeq Standard Operating Procedure
-# Based on: https://mothur.org/wiki/miseq_sop/
-# ============================================
-
-# --- Install ---
-conda install -c bioconda mothur
-
-# --- Download reference databases ---
-# SILVA alignment
-wget https://mothur.s3.us-east-2.amazonaws.com/wiki/silva.nr_v138_1.tgz
-tar -xzf silva.nr_v138_1.tgz
-
-# RDP training set
-wget https://mothur.s3.us-east-2.amazonaws.com/wiki/trainset18_062020.rdp.tgz
-tar -xzf trainset18_062020.rdp.tgz
-
-# --- Run mothur interactively ---
-mothur
-
-# Step 1: Make contigs from paired-end reads
-make.contigs(file=stability.files, processors=8)
-
-# Step 2: Screen sequences (remove ambiguous, too long/short)
-screen.seqs(fasta=stability.trim.contigs.fasta, \\
-    group=stability.contigs.groups, \\
-    maxambig=0, maxlength=275, minlength=200)
-
-# Step 3: Reduce redundancy
-unique.seqs(fasta=current)
-count.seqs(name=current, group=current)
-
-# Step 4: Align to SILVA reference
-align.seqs(fasta=current, reference=silva.nr_v138_1.align, \\
-    processors=8)
-
-# Step 5: Screen aligned sequences
-screen.seqs(fasta=current, count=current, \\
-    start=1968, end=11550)
-filter.seqs(fasta=current, vertical=T, trump=.)
-unique.seqs(fasta=current, count=current)
-
-# Step 6: Pre-cluster to reduce sequencing errors
-pre.cluster(fasta=current, count=current, diffs=2)
-
-# Step 7: Remove chimeras
-chimera.vsearch(fasta=current, count=current, \\
-    dereplicate=t)
-remove.seqs(fasta=current, accnos=current)
-
-# Step 8: Classify sequences
-classify.seqs(fasta=current, count=current, \\
-    reference=trainset18_062020.rdp.fasta, \\
-    taxonomy=trainset18_062020.rdp.tax, \\
-    cutoff=80)
-
-# Remove unwanted lineages
-remove.lineage(fasta=current, count=current, \\
-    taxonomy=current, \\
-    taxon=Chloroplast-Mitochondria-unknown-Archaea-Eukaryota)
-
-# Step 9: OTU clustering (97% similarity)
-dist.seqs(fasta=current, cutoff=0.03)
-cluster(column=current, count=current)
-
-# Step 10: Make shared file and classify OTUs
-make.shared(list=current, count=current, label=0.03)
-classify.otu(list=current, count=current, \\
-    taxonomy=current, label=0.03)
-
-# Step 11: Alpha diversity
-rarefaction.single(shared=current, calc=sobs, freq=100)
-summary.single(shared=current, \\
-    calc=nseqs-coverage-sobs-invsimpson-shannon-chao)
-
-# Step 12: Beta diversity
-dist.shared(shared=current, calc=braycurtis-jclass-thetayc)
-pcoa(phylip=current)
-nmds(phylip=current)
-amova(phylip=current, design=mouse.design)  # AMOVA test
-
-# Quit mothur
-quit()`
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>mothur vs. QIIME 2 Comparison</h3>
-                    <div class="table-wrapper">
-                        <table class="comparison-table">
-                            <thead>
-                                <tr><th>Feature</th><th>mothur</th><th>QIIME 2</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><td><strong>Interface</strong></td><td>Command-line (interactive)</td><td>Command-line (plugin-based)</td></tr>
-                                <tr><td><strong>Language</strong></td><td>C++</td><td>Python</td></tr>
-                                <tr><td><strong>OTU method</strong></td><td>OptiClust (default)</td><td>DADA2 ASVs (default)</td></tr>
-                                <tr><td><strong>Visualization</strong></td><td>R/external</td><td>Built-in (.qzv files)</td></tr>
-                                <tr><td><strong>Provenance</strong></td><td>Log files</td><td>Automatic tracking</td></tr>
-                                <tr><td><strong>Learning curve</strong></td><td>Moderate</td><td>Steep initially</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    `
-                }
-            ]
-        }
-    },
-    {
-        id: "shotgun_meta",
-        label: "Shotgun Metagenomics",
-        icon: "🔫",
-        children: [],
-        content: {
-            title: "Shotgun Metagenomics Analysis",
-            breadcrumb: ["Bioinformatics", "Metagenomics", "Shotgun Metagenomics"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "Overview",
-                    body: `Shotgun metagenomics sequences all DNA in a sample (not just marker genes), 
-                    enabling species-level taxonomy, functional profiling, and genome assembly from 
-                    uncultured organisms (Metagenome-Assembled Genomes / MAGs).`
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>🔄 Shotgun Metagenomics Pipeline</h3>
-                    <div class="pipeline">
-                        <div class="pipeline-step"><span class="step-num">Step 1</span><span class="step-name">QC</span><span class="step-tool">FastQC, Trimmomatic</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 2</span><span class="step-name">Host Removal</span><span class="step-tool">Bowtie2, BMTagger</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 3</span><span class="step-name">Taxonomy</span><span class="step-tool">Kraken2, MetaPhlAn</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 4</span><span class="step-name">Function</span><span class="step-tool">HUMAnN 3</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 5</span><span class="step-name">Assembly</span><span class="step-tool">MEGAHIT, metaSPAdes</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 6</span><span class="step-name">Binning</span><span class="step-tool">MetaBAT2, CONCOCT</span></div>
-                    </div>
-                    `
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "Shotgun Metagenomics Pipeline",
-                    code: `# ============================================
-# Shotgun Metagenomics — Complete Pipeline
-# ============================================
-
-# --- Step 1: Quality Control ---
-# FastQC
-fastqc -t 8 raw_R1.fastq.gz raw_R2.fastq.gz -o fastqc_results/
-
-# Trimmomatic
-trimmomatic PE -threads 8 \\
-    raw_R1.fastq.gz raw_R2.fastq.gz \\
-    trimmed_R1.fastq.gz unpaired_R1.fastq.gz \\
-    trimmed_R2.fastq.gz unpaired_R2.fastq.gz \\
-    ILLUMINACLIP:adapters.fa:2:30:10 \\
-    LEADING:3 TRAILING:3 \\
-    SLIDINGWINDOW:4:20 \\
-    MINLEN:50
-
-# --- Step 2: Remove Host Reads ---
-# Build host genome index (e.g., human)
-bowtie2-build GRCh38.fasta host_index
-
-# Map and keep unmapped (microbial) reads
-bowtie2 -x host_index \\
-    -1 trimmed_R1.fastq.gz \\
-    -2 trimmed_R2.fastq.gz \\
-    --very-sensitive \\
-    --threads 8 \\
-    --un-conc-gz microbial_%.fastq.gz \\
-    -S /dev/null 2> host_mapping_stats.txt
-
-# --- Step 3: Taxonomic Profiling ---
-# Option A: Kraken2 (fast, k-mer based)
-kraken2 --db kraken2_db \\
-    --paired microbial_1.fastq.gz microbial_2.fastq.gz \\
-    --output kraken2_output.txt \\
-    --report kraken2_report.txt \\
-    --threads 8
-
-# Bracken for abundance estimation
-bracken -d kraken2_db \\
-    -i kraken2_report.txt \\
-    -o bracken_species.txt \\
-    -r 150 \\    # read length
-    -l S         # species level
-
-# Option B: MetaPhlAn 4 (marker gene based)
-metaphlan microbial_1.fastq.gz,microbial_2.fastq.gz \\
-    --input_type fastq \\
-    --bowtie2out metaphlan_bt2.bz2 \\
-    --nproc 8 \\
-    -o metaphlan_profile.txt
-
-# --- Step 4: Functional Profiling ---
-# HUMAnN 3
-humann --input microbial_concat.fastq.gz \\
-    --output humann_results/ \\
-    --threads 8
-
-# Normalize pathway abundances
-humann_renorm_table \\
-    --input humann_results/pathabundance.tsv \\
-    --output humann_results/pathabundance_cpm.tsv \\
-    --units cpm
-
-# --- Step 5: Metagenomic Assembly ---
-# MEGAHIT (memory-efficient)
-megahit -1 microbial_1.fastq.gz \\
-    -2 microbial_2.fastq.gz \\
-    -o megahit_assembly/ \\
-    -t 8 \\
-    --min-contig-len 1000
-
-# Quality assessment
-quast megahit_assembly/final.contigs.fa \\
-    -o quast_results/ \\
-    --min-contig 1000
-
-# --- Step 6: Genome Binning (MAGs) ---
-# Map reads to assembly
-bowtie2-build megahit_assembly/final.contigs.fa assembly_index
-bowtie2 -x assembly_index \\
-    -1 microbial_1.fastq.gz \\
-    -2 microbial_2.fastq.gz \\
-    --threads 8 | samtools sort -@ 4 -o sorted_mapped.bam
-samtools index sorted_mapped.bam
-
-# Generate depth file
-jgi_summarize_bam_contig_depths \\
-    --outputDepth depth.txt sorted_mapped.bam
-
-# MetaBAT2 binning
-metabat2 -i megahit_assembly/final.contigs.fa \\
-    -a depth.txt \\
-    -o bins/bin \\
-    -m 1500 \\
-    -t 8
-
-# Check bin quality with CheckM
-checkm lineage_wf bins/ checkm_results/ -t 8 -x fa
-checkm qa checkm_results/lineage.ms checkm_results/ \\
-    --file checkm_summary.txt --tab_table
-
-# Good MAGs: Completeness > 50%, Contamination < 10%
-# High-quality MAGs: Completeness > 90%, Contamination < 5%`
-                }
-            ]
-        }
+      const activeHeader = $(".tree-node-header.active");
+      if (activeHeader) {
+        activeHeader.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    }, 100);
+  }
+
+
+  // ==============================================================
+  //  SECTION 9: SEARCH
+  // ==============================================================
+
+  const searchModal = $("#searchModal");
+  const modalSearchInput = $("#modalSearchInput");
+  const modalSearchResults = $("#modalSearchResults");
+  const headerSearchInput = $("#searchInput");
+
+  function openSearch() {
+    searchModal.classList.add("open");
+    modalSearchInput.value = "";
+    modalSearchInput.focus();
+    modalSearchResults.innerHTML = `<div class="search-empty"><p>Start typing to search across all bioinformatics topics, tools, and workflows.</p></div>`;
+  }
+
+  function closeSearch() {
+    searchModal.classList.remove("open");
+  }
+
+  function performSearch(query) {
+    if (!query || query.length < 2) {
+      modalSearchResults.innerHTML = `<div class="search-empty"><p>Start typing to search across all bioinformatics topics, tools, and workflows.</p></div>`;
+      return;
     }
-];
 
-// ----------------------------------------------------------------
-// 3C. STRUCTURAL BIOINFORMATICS
-// ----------------------------------------------------------------
-
-const structuralChildren = [
-    {
-        id: "struct_concepts",
-        label: "Core Concepts",
-        icon: "📖",
-        children: [],
-        content: {
-            title: "Structural Bioinformatics Core Concepts",
-            breadcrumb: ["Bioinformatics", "Structural Bioinformatics", "Core Concepts"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is Structural Bioinformatics?",
-                    body: `Structural bioinformatics deals with the analysis, prediction, and modeling of 
-                    three-dimensional structures of biological macromolecules (proteins, nucleic acids) 
-                    and their interactions. Understanding 3D structure is key to understanding function, 
-                    as structure determines how molecules interact.`
-                },
-                {
-                    type: "questions",
-                    title: "Biological Questions Answered",
-                    items: [
-                        "What is the 3D structure of a protein?",
-                        "How does a drug bind to its target protein?",
-                        "What conformational changes occur during function?",
-                        "Can we predict protein structure from sequence?",
-                        "Which residues are in the active site?",
-                        "How do mutations affect protein structure and stability?",
-                        "What protein-protein interactions occur?"
-                    ]
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>Levels of Protein Structure</h3>
-                    <div class="table-wrapper">
-                        <table class="comparison-table">
-                            <thead>
-                                <tr><th>Level</th><th>Description</th><th>Determined By</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><td><strong>Primary</strong></td><td>Linear amino acid sequence</td><td>Sequencing, mass spectrometry</td></tr>
-                                <tr><td><strong>Secondary</strong></td><td>Local folding (α-helices, β-sheets, loops)</td><td>CD spectroscopy, prediction tools</td></tr>
-                                <tr><td><strong>Tertiary</strong></td><td>Complete 3D fold of single polypeptide</td><td>X-ray, NMR, Cryo-EM, AlphaFold</td></tr>
-                                <tr><td><strong>Quaternary</strong></td><td>Multi-subunit assembly</td><td>X-ray, Cryo-EM</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <h3>Key Databases</h3>
-                    <div class="tags">
-                        <span class="tag tag-db">PDB (Protein Data Bank)</span>
-                        <span class="tag tag-db">AlphaFold DB</span>
-                        <span class="tag tag-db">SWISS-MODEL Repository</span>
-                        <span class="tag tag-db">SCOP2</span>
-                        <span class="tag tag-db">CATH</span>
-                        <span class="tag tag-db">UniProt</span>
-                        <span class="tag tag-db">PDBe</span>
-                    </div>
-                    `
-                }
-            ]
-        }
-    },
-    {
-        id: "structure_prediction",
-        label: "Structure Prediction",
-        icon: "🔮",
-        children: [],
-        content: {
-            title: "Protein Structure Prediction",
-            breadcrumb: ["Bioinformatics", "Structural Bioinformatics", "Structure Prediction"],
-            sections: [
-                {
-                    type: "html",
-                    body: `
-                    <h3>Prediction Methods</h3>
-                    <div class="table-wrapper">
-                        <table class="comparison-table">
-                            <thead>
-                                <tr><th>Method</th><th>Approach</th><th>When to Use</th><th>Accuracy</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>Homology Modeling</strong></td>
-                                    <td>Template-based; uses known structure of homolog</td>
-                                    <td>Sequence identity > 30% to a PDB structure</td>
-                                    <td>High (>30% identity)</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Threading (Fold Recognition)</strong></td>
-                                    <td>Fits sequence onto known fold library</td>
-                                    <td>Distant homology, 15-30% identity</td>
-                                    <td>Moderate</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Ab initio / De novo</strong></td>
-                                    <td>Physics-based; samples conformational space</td>
-                                    <td>No homologs available</td>
-                                    <td>Lower (small proteins)</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>AlphaFold 2</strong></td>
-                                    <td>Deep learning; MSA + structure module</td>
-                                    <td>Any protein sequence</td>
-                                    <td>Very high (often experimental quality)</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>ESMFold</strong></td>
-                                    <td>Language model; single sequence (no MSA)</td>
-                                    <td>Fast prediction, orphan proteins</td>
-                                    <td>High</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <h3>🛠️ Tools</h3>
-                    <div class="tags">
-                        <span class="tag tag-tool">AlphaFold 2</span>
-                        <span class="tag tag-tool">ColabFold</span>
-                        <span class="tag tag-tool">SWISS-MODEL</span>
-                        <span class="tag tag-tool">I-TASSER</span>
-                        <span class="tag tag-tool">Phyre2</span>
-                        <span class="tag tag-tool">RoseTTAFold</span>
-                        <span class="tag tag-tool">ESMFold</span>
-                        <span class="tag tag-tool">MODELLER</span>
-                        <span class="tag tag-tool">Robetta</span>
-                    </div>
-                    `
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "AlphaFold 2 / ColabFold Local Installation",
-                    code: `# ============================================
-# ColabFold (LocalColabFold) — Fastest way to run AlphaFold locally
-# ============================================
-
-# --- Install LocalColabFold ---
-wget https://raw.githubusercontent.com/YoshitakaMo/localcolabfold/main/install_colabbatch_linux.sh
-bash install_colabbatch_linux.sh
-export PATH="/path/to/localcolabfold/colabfold-conda/bin:$PATH"
-
-# --- Run prediction ---
-# Create input FASTA
-cat > query.fasta << 'EOF'
->my_protein
-MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSH
-GSAQVKGHGKKVADALTNAVAHVDDMPNALSALSDLHAHKLRVDPVNFKL
-LSHCLLVTLAAHLPAEFTPAVHASLDKFLASVSTVLTSKYR
-EOF
-
-# Run ColabFold
-colabfold_batch query.fasta output_dir/ \\
-    --num-recycle 3 \\
-    --amber \\              # Relax with AMBER force field
-    --num-models 5 \\       # Run all 5 models
-    --use-gpu-relax
-
-# --- Using SWISS-MODEL (web-based) ---
-# 1. Go to https://swissmodel.expasy.org/
-# 2. Paste sequence
-# 3. Click "Build Model"
-# 4. Select best template
-# 5. Download PDB file
-
-# --- Using MODELLER (template-based) ---
-conda install -c salilab modeller
-
-# Create alignment file (query aligned to template)
-# Run MODELLER Python script
-python3 << 'PYEOF'
-from modeller import *
-from modeller.automodel import *
-
-env = Environ()
-a = AutoModel(env,
-    alnfile='alignment.ali',
-    knowns='template_pdb',
-    sequence='target',
-    assess_methods=(assess.DOPE, assess.GA341))
-a.starting_model = 1
-a.ending_model = 5
-a.make()
-PYEOF`
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "Structure Validation & Visualization",
-                    code: `# ============================================
-# Validate and Visualize Predicted Structures
-# ============================================
-
-# --- Validation with MolProbity ---
-# Web: http://molprobity.biochem.duke.edu/
-# Upload PDB file → Get Ramachandran plot, clashscore, rotamer outliers
-
-# --- PyMOL visualization ---
-conda install -c conda-forge pymol-open-source
-
-pymol predicted_structure.pdb << 'PYMOLEOF'
-# Color by secondary structure
-color red, ss h    # helices
-color yellow, ss s # sheets
-color green, ss l+ # loops
-
-# Color by B-factor (pLDDT for AlphaFold)
-spectrum b, blue_white_red, minimum=0, maximum=100
-
-# Show surface
-show surface
-set transparency, 0.5
-
-# Save image
-ray 2400, 2400
-png structure_visualization.png, dpi=300
-PYMOLEOF
-
-# --- ChimeraX ---
-# Download: https://www.cgl.ucsf.edu/chimerax/
-chimerax predicted_structure.pdb
-
-# --- AlphaFold pLDDT interpretation ---
-# pLDDT > 90: Very high confidence (blue)
-# 70 < pLDDT < 90: Confident (cyan)
-# 50 < pLDDT < 70: Low confidence (yellow)
-# pLDDT < 50: Very low confidence / disordered (orange)`
-                },
-                {
-                    type: "interpretation",
-                    title: "Interpreting Structure Predictions",
-                    body: `
-                    <ul>
-                        <li><strong>AlphaFold pLDDT > 90:</strong> Backbone prediction is very reliable</li>
-                        <li><strong>pLDDT 70-90:</strong> Good backbone, but side chains may be less accurate</li>
-                        <li><strong>pLDDT < 50:</strong> Likely intrinsically disordered region — don't trust the structure</li>
-                        <li><strong>PAE (Predicted Aligned Error):</strong> Low PAE between domains = confident relative positioning</li>
-                        <li><strong>GMQE (SWISS-MODEL):</strong> 0-1 scale; > 0.7 is good</li>
-                        <li><strong>Ramachandran plot:</strong> > 98% residues in allowed regions = good geometry</li>
-                        <li><strong>RMSD:</strong> Root Mean Square Deviation vs. experimental structure; < 2Å is excellent</li>
-                    </ul>`
-                }
-            ]
-        }
-    },
-    {
-        id: "molecular_docking",
-        label: "Molecular Docking",
-        icon: "🔗",
-        children: [],
-        content: {
-            title: "Molecular Docking",
-            breadcrumb: ["Bioinformatics", "Structural Bioinformatics", "Molecular Docking"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is Molecular Docking?",
-                    body: `Molecular docking predicts the preferred orientation and binding affinity of a 
-                    small molecule (ligand) when bound to a target protein (receptor). It is fundamental 
-                    to structure-based drug design and virtual screening.`
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>🔄 Docking Workflow</h3>
-                    <div class="pipeline">
-                        <div class="pipeline-step"><span class="step-num">Step 1</span><span class="step-name">Protein Prep</span><span class="step-tool">PyMOL, UCSF Chimera</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 2</span><span class="step-name">Ligand Prep</span><span class="step-tool">Open Babel, RDKit</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 3</span><span class="step-name">Grid Setup</span><span class="step-tool">AutoDock Tools</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 4</span><span class="step-name">Docking</span><span class="step-tool">AutoDock Vina</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 5</span><span class="step-name">Analysis</span><span class="step-tool">PyMOL, PLIP</span></div>
-                    </div>
-                    
-                    <h3>🛠️ Docking Software</h3>
-                    <div class="tags">
-                        <span class="tag tag-tool">AutoDock Vina</span>
-                        <span class="tag tag-tool">AutoDock 4</span>
-                        <span class="tag tag-tool">GOLD</span>
-                        <span class="tag tag-tool">Glide (Schrödinger)</span>
-                        <span class="tag tag-tool">HADDOCK</span>
-                        <span class="tag tag-tool">SwissDock</span>
-                        <span class="tag tag-tool">CB-Dock2</span>
-                        <span class="tag tag-tool">DiffDock</span>
-                    </div>
-                    `
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "AutoDock Vina: Complete Docking Workflow",
-                    code: `# ============================================
-# Molecular Docking with AutoDock Vina
-# ============================================
-
-# --- Install ---
-conda install -c conda-forge autodock-vina
-conda install -c conda-forge openbabel
-pip install meeko  # For PDBQT preparation
-
-# --- Step 1: Prepare Protein ---
-# Download structure from PDB
-wget https://files.rcsb.org/download/1HSG.pdb
-
-# Clean protein (remove water, ligands, select chain A)
-# Using PyMOL:
-pymol 1HSG.pdb << 'PYMOLEOF'
-remove solvent
-remove resn MK1    # remove co-crystallized ligand
-remove chain B     # keep only chain A (if homodimer)
-h_add              # add hydrogens
-save protein_clean.pdb
-quit
-PYMOLEOF
-
-# Convert to PDBQT format
-# Using ADFR suite (mk_prepare_receptor.py)
-prepare_receptor -r protein_clean.pdb \\
-    -o protein.pdbqt \\
-    -A hydrogens
-
-# --- Step 2: Prepare Ligand ---
-# Download ligand from PubChem or draw in Avogadro
-# Convert SDF to PDBQT
-obabel ligand.sdf -O ligand.pdbqt --gen3d -h
-
-# OR using meeko (modern approach)
-mk_prepare_ligand.py -i ligand.sdf -o ligand.pdbqt
-
-# --- Step 3: Define Search Space ---
-# Identify binding site coordinates (from co-crystallized ligand or literature)
-# Create config file
-cat > config.txt << 'EOF'
-receptor = protein.pdbqt
-ligand = ligand.pdbqt
-
-center_x = 16.0
-center_y = 25.0
-center_z = 4.0
-
-size_x = 20
-size_y = 20
-size_z = 20
-
-exhaustiveness = 32
-num_modes = 10
-energy_range = 3
-EOF
-
-# --- Step 4: Run Docking ---
-vina --config config.txt --out docking_result.pdbqt --log docking_log.txt
-
-# --- Step 5: Analyze Results ---
-# View log file for binding energies
-cat docking_log.txt
-# mode |   affinity | dist from best mode
-#      | (kcal/mol) | rmsd l.b.| rmsd u.b.
-#    1       -8.5      0.000      0.000
-#    2       -7.9      1.234      2.456
-
-# Visualize in PyMOL
-pymol protein.pdbqt docking_result.pdbqt
-
-# Analyze interactions with PLIP (Protein-Ligand Interaction Profiler)
-pip install plip
-plip -f complex.pdb -o plip_results/ -x  # XML output`
-                },
-                {
-                    type: "interpretation",
-                    title: "Interpreting Docking Results",
-                    body: `
-                    <ul>
-                        <li><strong>Binding Affinity (kcal/mol):</strong> More negative = stronger binding. Typically -6 to -12 for drug-like molecules</li>
-                        <li><strong>RMSD:</strong> Deviation from best pose. Mode 1 is usually the most relevant</li>
-                        <li><strong>Hydrogen bonds:</strong> Key interactions — check distance (< 3.5 Å) and angle</li>
-                        <li><strong>Hydrophobic contacts:</strong> Important for binding in hydrophobic pockets</li>
-                        <li><strong>Salt bridges:</strong> Charged interactions stabilize binding</li>
-                        <li>⚠️ Docking scores are approximate — always validate with MD simulations or experimental assays</li>
-                        <li>⚠️ Re-dock the known ligand first to validate your docking protocol (RMSD < 2 Å)</li>
-                    </ul>`
-                }
-            ]
-        }
-    },
-    {
-        id: "mol_dynamics",
-        label: "Molecular Dynamics",
-        icon: "⚛️",
-        children: [],
-        content: {
-            title: "Molecular Dynamics Simulations",
-            breadcrumb: ["Bioinformatics", "Structural Bioinformatics", "Molecular Dynamics"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is Molecular Dynamics?",
-                    body: `Molecular Dynamics (MD) simulations compute the physical movements of atoms and 
-                    molecules by numerically solving Newton's equations of motion. In bioinformatics, MD 
-                    is used to study protein dynamics, conformational changes, ligand binding stability, 
-                    and membrane interactions at atomic resolution.`
-                },
-                {
-                    type: "math",
-                    title: "The Physics Behind MD",
-                    body: `
-                    <p>Newton's second law for each atom:</p>
-                    <div class="formula">F<sub>i</sub> = m<sub>i</sub> × a<sub>i</sub> = -∇V(r<sub>1</sub>, r<sub>2</sub>, ..., r<sub>N</sub>)</div>
-                    <p>The potential energy V is computed from the force field:</p>
-                    <div class="formula">V = V<sub>bonds</sub> + V<sub>angles</sub> + V<sub>dihedrals</sub> + V<sub>vdW</sub> + V<sub>electrostatic</sub></div>
-                    <p>Common force fields: AMBER, CHARMM, GROMOS, OPLS</p>
-                    <p>Time integration: Verlet / Leap-frog algorithm with timestep Δt ≈ 1-2 fs</p>
-                    `
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "GROMACS: Basic MD Simulation",
-                    code: `# ============================================
-# GROMACS — Protein in Water MD Simulation
-# ============================================
-
-# --- Install ---
-conda install -c conda-forge gromacs
-
-# --- Step 1: Prepare topology ---
-gmx pdb2gmx -f protein_clean.pdb \\
-    -o protein_processed.gro \\
-    -water spce \\           # SPC/E water model
-    -ff amber99sb-ildn       # Force field
-
-# --- Step 2: Define simulation box ---
-gmx editconf -f protein_processed.gro \\
-    -o protein_box.gro \\
-    -c \\                    # Center protein
-    -d 1.0 \\               # 1 nm from box edge
-    -bt dodecahedron         # Box type
-
-# --- Step 3: Solvate ---
-gmx solvate -cp protein_box.gro \\
-    -cs spc216.gro \\
-    -o protein_solv.gro \\
-    -p topol.top
-
-# --- Step 4: Add ions (neutralize charge) ---
-gmx grompp -f ions.mdp -c protein_solv.gro -p topol.top -o ions.tpr
-echo "SOL" | gmx genion -s ions.tpr \\
-    -o protein_ions.gro \\
-    -p topol.top \\
-    -pname NA -nname CL -neutral
-
-# --- Step 5: Energy Minimization ---
-gmx grompp -f minim.mdp -c protein_ions.gro -p topol.top -o em.tpr
-gmx mdrun -v -deffnm em
-
-# Check potential energy converged
-echo "10" | gmx energy -f em.edr -o em_potential.xvg
-
-# --- Step 6: NVT Equilibration (100 ps) ---
-gmx grompp -f nvt.mdp -c em.gro -r em.gro -p topol.top -o nvt.tpr
-gmx mdrun -deffnm nvt
-
-# --- Step 7: NPT Equilibration (100 ps) ---
-gmx grompp -f npt.mdp -c nvt.gro -r nvt.gro \\
-    -t nvt.cpt -p topol.top -o npt.tpr
-gmx mdrun -deffnm npt
-
-# --- Step 8: Production MD (100 ns) ---
-gmx grompp -f md.mdp -c npt.gro -t npt.cpt \\
-    -p topol.top -o md.tpr
-gmx mdrun -deffnm md -nb gpu  # Use GPU if available
-
-# --- Step 9: Analysis ---
-# RMSD
-echo "4 4" | gmx rms -s md.tpr -f md.xtc -o rmsd.xvg -tu ns
-
-# RMSF (per residue flexibility)
-echo "4" | gmx rmsf -s md.tpr -f md.xtc -o rmsf.xvg -res
-
-# Radius of gyration (compactness)
-echo "1" | gmx gyrate -s md.tpr -f md.xtc -o gyrate.xvg
-
-# Hydrogen bonds
-echo "1 1" | gmx hbond -s md.tpr -f md.xtc -num hbonds.xvg
-
-# SASA (Solvent Accessible Surface Area)
-echo "1" | gmx sasa -s md.tpr -f md.xtc -o sasa.xvg`
-                },
-                {
-                    type: "interpretation",
-                    title: "Interpreting MD Results",
-                    body: `
-                    <ul>
-                        <li><strong>RMSD plateau:</strong> System has equilibrated. Typically 1-3 Å for stable proteins.</li>
-                        <li><strong>RMSD > 4 Å:</strong> Major conformational change or unfolding</li>
-                        <li><strong>RMSF peaks:</strong> Flexible regions (loops, termini). Low RMSF = rigid regions</li>
-                        <li><strong>Rg (Radius of gyration):</strong> Stable Rg = protein maintains fold; decreasing Rg = compaction</li>
-                        <li><strong>H-bonds:</strong> Consistent H-bonds between protein-ligand indicate stable binding</li>
-                        <li>Always check for equilibration before analyzing production run</li>
-                        <li>Run triplicates with different random seeds for statistical validity</li>
-                    </ul>`
-                }
-            ]
-        }
-    }
-];
-
-// ----------------------------------------------------------------
-// 3D. COMPARATIVE GENOMICS
-// ----------------------------------------------------------------
-
-const comparativeGenomicsChildren = [
-    {
-        id: "comp_gen_concepts",
-        label: "Core Concepts",
-        icon: "📖",
-        children: [],
-        content: {
-            title: "Comparative Genomics Core Concepts",
-            breadcrumb: ["Bioinformatics", "Comparative Genomics", "Core Concepts"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is Comparative Genomics?",
-                    body: `Comparative genomics is the study of similarities and differences in genome structure, 
-                    gene content, gene order, and regulatory elements across different organisms. By comparing 
-                    genomes, we can understand evolutionary relationships, identify conserved functional elements, 
-                    and discover lineage-specific adaptations.`
-                },
-                {
-                    type: "questions",
-                    title: "Biological Questions Answered",
-                    items: [
-                        "What genes are shared across species (core genome)?",
-                        "What genes are unique to a species (accessory genome)?",
-                        "How has genome structure changed over evolution?",
-                        "What genomic rearrangements have occurred?",
-                        "Which non-coding regions are conserved (potentially functional)?",
-                        "What are the genetic bases of phenotypic differences?",
-                        "How does gene family size vary across species?"
-                    ]
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>🛠️ Tools for Comparative Genomics</h3>
-                    <div class="tags">
-                        <span class="tag tag-tool">OrthoFinder</span>
-                        <span class="tag tag-tool">Roary</span>
-                        <span class="tag tag-tool">Mauve</span>
-                        <span class="tag tag-tool">MUMmer</span>
-                        <span class="tag tag-tool">SyMAP</span>
-                        <span class="tag tag-tool">Circos</span>
-                        <span class="tag tag-tool">NCBI Genome Workbench</span>
-                        <span class="tag tag-tool">Ensembl Compara</span>
-                        <span class="tag tag-tool">OrthoMCL</span>
-                        <span class="tag tag-tool">PGAP</span>
-                    </div>
-                    `
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "Core/Pan Genome Analysis with Roary",
-                    code: `# ============================================
-# Pan-genome Analysis (Prokaryotic)
-# ============================================
-
-# --- Install ---
-conda install -c bioconda roary
-
-# --- Input: GFF3 files from Prokka annotation ---
-# First annotate your genomes
-for genome in *.fasta; do
-    name=\$(basename "$genome" .fasta)
-    prokka --outdir "prokka_\${name}" \\
-        --prefix "\${name}" \\
-        --cpus 8 \\
-        "$genome"
-done
-
-# --- Run Roary ---
-roary -f roary_results/ \\
-    -e -n \\                # Create core gene alignment with MAFFT
-    -p 8 \\                 # Threads
-    -i 95 \\                # Minimum % identity for blastp
-    -cd 99 \\               # Core definition: present in 99% of isolates
-    -v \\                   # Verbose
-    prokka_*//*.gff
-
-# --- Output files ---
-# gene_presence_absence.csv  - Main results matrix
-# core_gene_alignment.aln    - Alignment of core genes
-# summary_statistics.txt     - Pan-genome stats
-# pan_genome_reference.fa    - All unique genes
-
-# --- Visualize with Phandango ---
-# Upload gene_presence_absence.csv to https://jameshadfield.github.io/phandango/
-
-# --- Create plots ---
-# Using roary_plots.py
-python roary_plots.py core_gene_alignment.nwk \\
-    gene_presence_absence.csv
-
-# --- OrthoFinder for eukaryotic ortholog detection ---
-conda install -c bioconda orthofinder
-
-# Prepare: one FASTA file of protein sequences per species
-mkdir proteomes/
-cp species1_proteins.fasta proteomes/
-cp species2_proteins.fasta proteomes/
-
-orthofinder -f proteomes/ -t 8 -a 4
-
-# Results in: proteomes/OrthoFinder/Results_*/
-# Orthogroups.tsv — ortholog groups
-# Species_Tree/  — species tree from orthologs
-# Comparative_Genomics_Statistics/`
-                }
-            ]
-        }
-    },
-    {
-        id: "synteny_analysis",
-        label: "Synteny Analysis",
-        icon: "🔀",
-        children: [],
-        content: {
-            title: "Synteny & Genome Rearrangement Analysis",
-            breadcrumb: ["Bioinformatics", "Comparative Genomics", "Synteny Analysis"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is Synteny?",
-                    body: `Synteny refers to the conservation of gene order and content between genomic 
-                    regions of different species. Synteny analysis reveals chromosomal rearrangements 
-                    (inversions, translocations, duplications) that occurred during evolution.`
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "Synteny Analysis with MUMmer & Mauve",
-                    code: `# ============================================
-# Genome Alignment & Synteny
-# ============================================
-
-# --- MUMmer 4 ---
-conda install -c bioconda mummer4
-
-# Align two genomes
-nucmer --prefix alignment \\
-    reference_genome.fasta \\
-    query_genome.fasta
-
-# Filter alignments
-delta-filter -1 -q -r alignment.delta > alignment_filtered.delta
-
-# Generate coordinates
-show-coords -rcl alignment_filtered.delta > alignment.coords
-
-# Generate dot plot
-mummerplot --fat --png --large \\
-    alignment_filtered.delta \\
-    -p dotplot
-
-# --- Mauve (GUI) ---
-# Download: https://darlinglab.org/mauve/
-# Perform progressive alignment
-progressiveMauve \\
-    --output=mauve_alignment.xmfa \\
-    genome1.fasta genome2.fasta genome3.fasta
-
-# Open in Mauve GUI to visualize synteny blocks
-
-# --- Circos plots ---
-conda install -c bioconda circos
-
-# Circos creates beautiful circular genome comparisons
-# Configure circos.conf with:
-#   - Karyotype (chromosome sizes)
-#   - Links (syntenic regions)
-#   - Histograms (gene density, GC content)
-circos -conf circos.conf`
-                }
-            ]
-        }
-    }
-];
-
-// ----------------------------------------------------------------
-// 3E. FUNCTIONAL GENOMICS & ENRICHMENT
-// ----------------------------------------------------------------
-
-const functionalGenomicsChildren = [
-    {
-        id: "go_annotation",
-        label: "GO Annotation",
-        icon: "🏷️",
-        children: [],
-        content: {
-            title: "Gene Ontology (GO) Annotation",
-            breadcrumb: ["Bioinformatics", "Functional Genomics", "GO Annotation"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is Gene Ontology?",
-                    body: `The Gene Ontology (GO) provides a standardized vocabulary to describe gene and 
-                    protein functions across all organisms. It consists of three ontologies:
-                    1) Biological Process (BP) — what the gene product does in the cell
-                    2) Molecular Function (MF) — biochemical activity at molecular level
-                    3) Cellular Component (CC) — where in the cell the product acts`
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>GO Structure</h3>
-                    <ul>
-                        <li>GO is a <strong>Directed Acyclic Graph (DAG)</strong>, not a simple hierarchy</li>
-                        <li>A term can have multiple parent terms</li>
-                        <li>More specific terms are "children" of more general terms</li>
-                        <li>Evidence codes indicate how the annotation was made (IDA, IMP, IEA, etc.)</li>
-                    </ul>
-                    
-                    <h3>Databases & Tools</h3>
-                    <div class="tags">
-                        <span class="tag tag-db">Gene Ontology (geneontology.org)</span>
-                        <span class="tag tag-db">AmiGO 2</span>
-                        <span class="tag tag-db">QuickGO</span>
-                        <span class="tag tag-tool">Blast2GO</span>
-                        <span class="tag tag-tool">InterProScan</span>
-                        <span class="tag tag-tool">eggNOG-mapper</span>
-                    </div>
-                    `
-                }
-            ]
-        }
-    },
-    {
-        id: "enrichment_analysis",
-        label: "Enrichment Analysis",
-        icon: "📊",
-        children: [],
-        content: {
-            title: "GO & Pathway Enrichment Analysis",
-            breadcrumb: ["Bioinformatics", "Functional Genomics", "Enrichment Analysis"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is Enrichment Analysis?",
-                    body: `Enrichment analysis (also called over-representation analysis or ORA) determines 
-                    whether a predefined set of genes (e.g., GO terms, KEGG pathways) is statistically 
-                    over-represented in a list of differentially expressed genes compared to what would 
-                    be expected by chance.`
-                },
-                {
-                    type: "math",
-                    title: "Statistical Foundation",
-                    body: `
-                    <h4>Hypergeometric Test (Fisher's Exact Test)</h4>
-                    <div class="formula">P(X ≥ k) = Σ<sub>i=k</sub><sup>min(K,n)</sup> C(K,i) × C(N-K, n-i) / C(N,n)</div>
-                    <p>Where:</p>
-                    <ul>
-                        <li>N = total genes in genome</li>
-                        <li>K = genes annotated to the GO term</li>
-                        <li>n = genes in your DE list</li>
-                        <li>k = DE genes annotated to the GO term</li>
-                    </ul>
-                    
-                    <h4>Multiple Testing Correction</h4>
-                    <p>Testing thousands of GO terms requires correction:</p>
-                    <ul>
-                        <li><strong>Bonferroni:</strong> Most conservative. p<sub>adj</sub> = p × m (m = number of tests)</li>
-                        <li><strong>Benjamini-Hochberg (FDR):</strong> Controls false discovery rate. Most commonly used.</li>
-                    </ul>
-                    
-                    <h4>Gene Set Enrichment Analysis (GSEA)</h4>
-                    <p>Unlike ORA, GSEA uses ALL genes ranked by a metric (e.g., log2FC) — no arbitrary cutoff needed:</p>
-                    <div class="formula">ES = max<sub>j</sub> |Σ<sub>i=1</sub><sup>j</sup> (weighted hit/miss)|</div>
-                    `
-                },
-                {
-                    type: "code",
-                    language: "r",
-                    title: "clusterProfiler: Complete Enrichment Analysis",
-                    code: `# ============================================
-# GO & KEGG Enrichment with clusterProfiler
-# ============================================
-
-# --- Install ---
-if (!require("BiocManager")) install.packages("BiocManager")
-BiocManager::install(c(
-    "clusterProfiler", "enrichplot", "org.Hs.eg.db",
-    "DOSE", "pathview", "AnnotationDbi"
-))
-
-library(clusterProfiler)
-library(enrichplot)
-library(org.Hs.eg.db)
-library(DOSE)
-library(pathview)
-library(ggplot2)
-
-# --- Prepare gene list ---
-# Assume you have DESeq2/limma results
-de_results <- read.csv("deseq2_results.csv")
-
-# Get significant DEGs
-sig_genes <- de_results[de_results$padj < 0.05 & 
-                        abs(de_results$log2FoldChange) > 1, ]
-
-# Convert gene symbols to Entrez IDs
-gene_ids <- bitr(sig_genes$gene, 
-                 fromType = "SYMBOL",
-                 toType = "ENTREZID",
-                 OrgDb = org.Hs.eg.db)
-
-# =============================================
-# 1. GO Over-Representation Analysis (ORA)
-# =============================================
-ego_bp <- enrichGO(
-    gene = gene_ids$ENTREZID,
-    OrgDb = org.Hs.eg.db,
-    ont = "BP",           # BP, MF, CC, or "ALL"
-    pAdjustMethod = "BH",
-    pvalueCutoff = 0.05,
-    qvalueCutoff = 0.2,
-    readable = TRUE       # Convert IDs to gene symbols
-)
-
-# Visualizations
-dotplot(ego_bp, showCategory = 20, title = "GO Biological Process")
-ggsave("GO_BP_dotplot.pdf", width = 10, height = 8)
-
-barplot(ego_bp, showCategory = 15)
-ggsave("GO_BP_barplot.pdf", width = 10, height = 7)
-
-# Network plot (shows gene overlap between terms)
-cnetplot(ego_bp, categorySize = "pvalue", 
-         showCategory = 5, node_label = "gene")
-ggsave("GO_BP_network.pdf", width = 12, height = 10)
-
-# Enrichment map
-ego_bp_sim <- pairwise_termsim(ego_bp)
-emapplot(ego_bp_sim, showCategory = 30)
-ggsave("GO_BP_emap.pdf", width = 12, height = 10)
-
-# Tree plot (hierarchical clustering of GO terms)
-treeplot(ego_bp_sim)
-ggsave("GO_BP_tree.pdf", width = 14, height = 10)
-
-# =============================================
-# 2. KEGG Pathway Enrichment
-# =============================================
-ekegg <- enrichKEGG(
-    gene = gene_ids$ENTREZID,
-    organism = "hsa",      # Human
-    pAdjustMethod = "BH",
-    pvalueCutoff = 0.05
-)
-
-dotplot(ekegg, showCategory = 15, title = "KEGG Pathways")
-ggsave("KEGG_dotplot.pdf", width = 10, height = 8)
-
-# Pathway visualization with pathview
-pathview(
-    gene.data = setNames(sig_genes$log2FoldChange, gene_ids$ENTREZID),
-    pathway.id = "hsa04110",  # Cell cycle pathway
-    species = "hsa",
-    out.suffix = "DE_genes"
-)
-
-# =============================================
-# 3. Gene Set Enrichment Analysis (GSEA)
-# =============================================
-# Prepare ranked gene list (ALL genes, ranked by log2FC)
-all_genes <- de_results$log2FoldChange
-names(all_genes) <- bitr(de_results$gene, 
-                          fromType = "SYMBOL",
-                          toType = "ENTREZID",
-                          OrgDb = org.Hs.eg.db)$ENTREZID
-all_genes <- sort(all_genes, decreasing = TRUE)
-all_genes <- all_genes[!is.na(names(all_genes))]
-
-gsea_go <- gseGO(
-    geneList = all_genes,
-    OrgDb = org.Hs.eg.db,
-    ont = "BP",
-    minGSSize = 10,
-    maxGSSize = 500,
-    pvalueCutoff = 0.05,
-    verbose = TRUE
-)
-
-# GSEA plot for a specific term
-gseaplot2(gsea_go, geneSetID = 1:3, pvalue_table = TRUE)
-ggsave("GSEA_plot.pdf", width = 10, height = 7)
-
-# Ridge plot
-ridgeplot(gsea_go, showCategory = 15)
-ggsave("GSEA_ridge.pdf", width = 10, height = 9)
-
-# =============================================
-# 4. Disease Ontology / Reactome
-# =============================================
-BiocManager::install("ReactomePA")
-library(ReactomePA)
-
-reactome <- enrichPathway(
-    gene = gene_ids$ENTREZID,
-    organism = "human",
-    pvalueCutoff = 0.05,
-    readable = TRUE
-)
-dotplot(reactome, showCategory = 15)
-
-# Save all results as CSV
-write.csv(as.data.frame(ego_bp), "GO_BP_results.csv", row.names = FALSE)
-write.csv(as.data.frame(ekegg), "KEGG_results.csv", row.names = FALSE)
-write.csv(as.data.frame(gsea_go), "GSEA_GO_results.csv", row.names = FALSE)`
-                },
-                {
-                    type: "interpretation",
-                    title: "Interpreting Enrichment Results",
-                    body: `
-                    <ul>
-                        <li><strong>Adjusted p-value < 0.05:</strong> Statistically significant enrichment</li>
-                        <li><strong>Gene Ratio:</strong> k/n — fraction of DE genes in the term. Higher = stronger effect.</li>
-                        <li><strong>GeneRatio vs BgRatio:</strong> Compare to see if term is truly over-represented</li>
-                        <li><strong>Redundancy:</strong> GO terms are hierarchical — many overlapping terms. Use enrichment maps to cluster similar terms.</li>
-                        <li><strong>GSEA NES (Normalized Enrichment Score):</strong> Positive = upregulated pathway; negative = downregulated</li>
-                        <li><strong>GSEA leading edge genes:</strong> The subset of genes driving the enrichment signal</li>
-                        <li>Always report: method used, database version, multiple testing correction, and gene universe (background)</li>
-                    </ul>`
-                }
-            ]
-        }
-    }
-];
-
-// ----------------------------------------------------------------
-// 3F. NGS DATA ANALYSIS — TRANSCRIPTOMICS (Extended)
-// ----------------------------------------------------------------
-
-const transcriptomicsChildren = [
-    {
-        id: "rnaseq_pipeline",
-        label: "RNA-Seq Pipeline",
-        icon: "🧪",
-        children: [],
-        content: {
-            title: "Complete RNA-Seq Analysis Pipeline",
-            breadcrumb: ["Bioinformatics", "Transcriptomics", "RNA-Seq Pipeline"],
-            sections: [
-                {
-                    type: "html",
-                    body: `
-                    <h3>🔄 Standard RNA-Seq Pipeline</h3>
-                    <div class="pipeline">
-                        <div class="pipeline-step"><span class="step-num">Step 1</span><span class="step-name">QC</span><span class="step-tool">FastQC + MultiQC</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 2</span><span class="step-name">Trim</span><span class="step-tool">Trimmomatic / fastp</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 3</span><span class="step-name">Align</span><span class="step-tool">HISAT2 / STAR</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 4</span><span class="step-name">Count</span><span class="step-tool">featureCounts / HTSeq</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 5</span><span class="step-name">DE Analysis</span><span class="step-tool">DESeq2 / limma / edgeR</span></div>
-                        <span class="pipeline-arrow">→</span>
-                        <div class="pipeline-step"><span class="step-num">Step 6</span><span class="step-name">Enrichment</span><span class="step-tool">clusterProfiler</span></div>
-                    </div>
-                    `
-                },
-                {
-                    type: "code",
-                    language: "bash",
-                    title: "Steps 1-4: Raw Reads to Count Matrix (Linux/Bash)",
-                    code: `# ============================================
-# RNA-Seq Analysis: From FASTQ to Count Matrix
-# ============================================
-
-# --- Setup directories ---
-mkdir -p {raw_data,qc_reports,trimmed,aligned,counts,results}
-
-# --- Step 1: Quality Control ---
-# Run FastQC on all samples
-fastqc -t 8 raw_data/*.fastq.gz -o qc_reports/
-
-# Aggregate reports with MultiQC
-multiqc qc_reports/ -o qc_reports/multiqc/
-
-# --- Step 2: Adapter Trimming ---
-# Option A: Trimmomatic (paired-end)
-for sample in raw_data/*_R1.fastq.gz; do
-    name=$(basename "$sample" _R1.fastq.gz)
-    
-    trimmomatic PE -threads 8 \\
-        "raw_data/\${name}_R1.fastq.gz" "raw_data/\${name}_R2.fastq.gz" \\
-        "trimmed/\${name}_R1_paired.fastq.gz" "trimmed/\${name}_R1_unpaired.fastq.gz" \\
-        "trimmed/\${name}_R2_paired.fastq.gz" "trimmed/\${name}_R2_unpaired.fastq.gz" \\
-        ILLUMINACLIP:TruSeq3-PE-2.fa:2:30:10:2:True \\
-        LEADING:3 TRAILING:3 \\
-        SLIDINGWINDOW:4:20 \\
-        MINLEN:36
-done
-
-# Option B: fastp (faster, auto-detects adapters)
-for sample in raw_data/*_R1.fastq.gz; do
-    name=$(basename "$sample" _R1.fastq.gz)
-    
-    fastp \\
-        -i "raw_data/\${name}_R1.fastq.gz" \\
-        -I "raw_data/\${name}_R2.fastq.gz" \\
-        -o "trimmed/\${name}_R1.fastq.gz" \\
-        -O "trimmed/\${name}_R2.fastq.gz" \\
-        -h "qc_reports/\${name}_fastp.html" \\
-        -j "qc_reports/\${name}_fastp.json" \\
-        --thread 8 \\
-        --qualified_quality_phred 20 \\
-        --length_required 36
-done
-
-# --- Step 3: Alignment with HISAT2 ---
-# Download and build genome index
-# Download reference genome (e.g., GRCh38)
-wget https://genome-idx.s3.amazonaws.com/hisat2/grch38.tar.gz
-tar -xzf grch38.tar.gz
-
-# OR build index from FASTA
-# hisat2-build genome.fasta genome_index
-
-# Align each sample
-for sample in trimmed/*_R1_paired.fastq.gz; do
-    name=$(basename "$sample" _R1_paired.fastq.gz)
-    
-    hisat2 -p 8 \\
-        --dta \\                         # For downstream assembly
-        -x grch38/genome \\              # Index prefix
-        -1 "trimmed/\${name}_R1_paired.fastq.gz" \\
-        -2 "trimmed/\${name}_R2_paired.fastq.gz" \\
-        --summary-file "aligned/\${name}_hisat2_summary.txt" \\
-        | samtools sort -@ 4 \\
-        -o "aligned/\${name}.sorted.bam"
-    
-    # Index BAM file
-    samtools index "aligned/\${name}.sorted.bam"
-done
-
-# Check alignment rates
-for f in aligned/*_summary.txt; do
-    echo "=== $(basename $f) ==="
-    cat "$f"
-done
-
-# --- Step 4: Read Counting with featureCounts ---
-# Download GTF annotation
-wget https://ftp.ensembl.org/pub/release-110/gtf/homo_sapiens/Homo_sapiens.GRCh38.110.gtf.gz
-gunzip Homo_sapiens.GRCh38.110.gtf.gz
-
-# Count reads per gene (all samples at once)
-featureCounts \\
-    -T 8 \\
-    -p --countReadPairs \\    # Paired-end mode
-    -a Homo_sapiens.GRCh38.110.gtf \\
-    -g gene_id \\
-    -o counts/raw_counts.txt \\
-    aligned/*.sorted.bam
-
-# Clean up count matrix
-# Remove first line (command) and columns 2-6 (chr, start, end, strand, length)
-tail -n +2 counts/raw_counts.txt | cut -f1,7- > counts/count_matrix.txt
-
-echo "Pipeline complete! Count matrix: counts/count_matrix.txt"`
-                },
-                {
-                    type: "errors",
-                    title: "Common RNA-Seq Errors",
-                    items: [
-                        {
-                            error: "Overall alignment rate: 0.00% (HISAT2)",
-                            solution: `Wrong genome index! Check that your reference matches the organism. 
-                            Also ensure index files are complete (.ht2 files). Rebuild if needed.`
-                        },
-                        {
-                            error: "featureCounts: Unassigned_NoFeatures count is very high",
-                            solution: `GTF annotation doesn't match the reference genome version. Ensure both 
-                            are from the same Ensembl/NCBI release. Also check strandedness: use -s 0 (unstranded), 
-                            -s 1 (stranded), or -s 2 (reverse stranded). Run \`infer_experiment.py\` from RSeQC to check.`
-                        },
-                        {
-                            error: "Trimmomatic: Error: Unable to detect quality encoding",
-                            solution: `Specify quality encoding explicitly: PHRED33 (Illumina 1.8+) or PHRED64 (older). 
-                            Add \`-phred33\` flag to the trimmomatic command.`
-                        },
-                        {
-                            error: "samtools sort: Out of memory",
-                            solution: `Limit memory per thread: \`samtools sort -m 2G -@ 4\`. 
-                            Also ensure sufficient disk space for temporary files.`
-                        }
-                    ]
-                }
-            ]
-        }
-    },
-    {
-        id: "deseq2_analysis",
-        label: "DESeq2 Analysis",
-        icon: "📈",
-        children: [],
-        content: {
-            title: "Differential Expression with DESeq2",
-            breadcrumb: ["Bioinformatics", "Transcriptomics", "DESeq2 Analysis"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is DESeq2?",
-                    body: `DESeq2 is a Bioconductor R package for differential gene expression analysis 
-                    of RNA-Seq count data. It uses a negative binomial generalized linear model with 
-                    shrinkage estimation for dispersions and fold changes. It handles low-count genes, 
-                    outliers, and provides robust statistical testing with multiple testing correction.`
-                },
-                {
-                    type: "math",
-                    title: "Statistical Model",
-                    body: `
-                    <h4>Negative Binomial Model</h4>
-                    <div class="formula">K<sub>ij</sub> ~ NB(μ<sub>ij</sub>, α<sub>i</sub>)</div>
-                    <p>Where K<sub>ij</sub> = read count for gene i in sample j, μ = mean, α = dispersion.</p>
-                    
-                    <h4>Mean-variance relationship</h4>
-                    <div class="formula">Var(K<sub>ij</sub>) = μ<sub>ij</sub> + α<sub>i</sub> × μ<sub>ij</sub>²</div>
-                    
-                    <h4>Log2 fold change shrinkage (apeglm)</h4>
-                    <p>DESeq2 uses empirical Bayes shrinkage to produce more reliable log2FC estimates, 
-                    especially for genes with low counts or high variability.</p>
-                    
-                    <h4>Wald test</h4>
-                    <div class="formula">W = β̂ / SE(β̂)</div>
-                    <p>Tests if log2FC (β) is significantly different from zero. P-values adjusted with BH method.</p>
-                    `
-                },
-                {
-                    type: "code",
-                    language: "r",
-                    title: "Complete DESeq2 Analysis",
-                    code: `# ============================================
-# Differential Expression Analysis with DESeq2
-# ============================================
-
-# --- Install ---
-if (!require("BiocManager")) install.packages("BiocManager")
-BiocManager::install(c("DESeq2", "apeglm", "EnhancedVolcano"))
-install.packages(c("pheatmap", "RColorBrewer", "ggplot2", "ggrepel"))
-
-library(DESeq2)
-library(apeglm)
-library(pheatmap)
-library(RColorBrewer)
-library(ggplot2)
-library(EnhancedVolcano)
-
-# --- Step 1: Load Data ---
-# Read count matrix
-count_data <- read.table("counts/count_matrix.txt", 
-                         header = TRUE, row.names = 1, sep = "\\t")
-
-# Read sample metadata
-col_data <- read.csv("sample_metadata.csv", row.names = 1)
-# col_data should have columns: condition, batch, etc.
-# Example:
-# SampleID,condition,batch
-# Sample1,Control,1
-# Sample2,Control,1
-# Sample3,Treatment,2
-
-# Ensure column order matches
-count_data <- count_data[, rownames(col_data)]
-
-# --- Step 2: Create DESeq2 Dataset ---
-dds <- DESeqDataSetFromMatrix(
-    countData = count_data,
-    colData = col_data,
-    design = ~ condition    # Add ~ batch + condition for batch correction
-)
-
-# Pre-filtering: remove low-count genes
-keep <- rowSums(counts(dds)) >= 10
-dds <- dds[keep, ]
-
-# Set reference level
-dds$condition <- relevel(dds$condition, ref = "Control")
-
-# --- Step 3: Run DESeq2 ---
-dds <- DESeq(dds)
-
-# --- Step 4: Extract Results ---
-res <- results(dds, 
-               contrast = c("condition", "Treatment", "Control"),
-               alpha = 0.05)
-
-# Apply log2FC shrinkage (recommended)
-res_shrunk <- lfcShrink(dds, 
-                         coef = "condition_Treatment_vs_Control",
-                         type = "apeglm")
-
-# Summary
-summary(res_shrunk)
-
-# --- Step 5: Explore Results ---
-# Order by adjusted p-value
-res_ordered <- res_shrunk[order(res_shrunk$padj), ]
-
-# Get significant DEGs
-sig_genes <- subset(res_ordered, padj < 0.05 & abs(log2FoldChange) > 1)
-cat("Significant DEGs:", nrow(sig_genes), "\\n")
-cat("Upregulated:", sum(sig_genes$log2FoldChange > 0), "\\n")
-cat("Downregulated:", sum(sig_genes$log2FoldChange < 0), "\\n")
-
-# Save results
-write.csv(as.data.frame(res_ordered), "results/deseq2_all_results.csv")
-write.csv(as.data.frame(sig_genes), "results/deseq2_significant_DEGs.csv")
-
-# --- Step 6: Visualizations ---
-
-# 6a. MA Plot
-plotMA(res_shrunk, ylim = c(-5, 5), main = "MA Plot")
-
-# 6b. Volcano Plot
-EnhancedVolcano(res_shrunk,
-    lab = rownames(res_shrunk),
-    x = 'log2FoldChange',
-    y = 'padj',
-    title = 'Treatment vs Control',
-    pCutoff = 0.05,
-    FCcutoff = 1,
-    pointSize = 2.0,
-    labSize = 3.0,
-    col = c('grey30', 'forestgreen', 'royalblue', 'red2'),
-    legendPosition = 'right')
-ggsave("results/volcano_plot.pdf", width = 10, height = 8)
-
-# 6c. PCA Plot
-vsd <- vst(dds, blind = FALSE)
-
-pcaData <- plotPCA(vsd, intgroup = "condition", returnData = TRUE)
-percentVar <- round(100 * attr(pcaData, "percentVar"))
-
-ggplot(pcaData, aes(PC1, PC2, color = condition)) +
-    geom_point(size = 4) +
-    xlab(paste0("PC1: ", percentVar[1], "% variance")) +
-    ylab(paste0("PC2: ", percentVar[2], "% variance")) +
-    theme_minimal(base_size = 14) +
-    ggtitle("PCA: RNA-Seq Samples")
-ggsave("results/pca_plot.pdf", width = 8, height = 6)
-
-# 6d. Heatmap of top DEGs
-top_genes <- head(rownames(res_ordered), 50)
-mat <- assay(vsd)[top_genes, ]
-mat <- mat - rowMeans(mat)  # Center
-
-annotation_col <- data.frame(Condition = col_data$condition, 
-                              row.names = colnames(mat))
-
-pheatmap(mat,
-    annotation_col = annotation_col,
-    clustering_distance_rows = "euclidean",
-    clustering_distance_cols = "euclidean",
-    clustering_method = "complete",
-    scale = "row",
-    show_rownames = TRUE,
-    fontsize_row = 7,
-    main = "Top 50 DEGs Heatmap",
-    filename = "results/heatmap_top50.pdf",
-    width = 10, height = 12)
-
-# 6e. Sample distance heatmap
-sampleDists <- dist(t(assay(vsd)))
-sampleDistMatrix <- as.matrix(sampleDists)
-
-pheatmap(sampleDistMatrix,
-    clustering_distance_rows = sampleDists,
-    clustering_distance_cols = sampleDists,
-    col = colorRampPalette(rev(brewer.pal(9, "Blues")))(255),
-    main = "Sample Distance Matrix",
-    filename = "results/sample_distances.pdf")`
-                },
-                {
-                    type: "interpretation",
-                    title: "Interpreting DESeq2 Results",
-                    body: `
-                    <ul>
-                        <li><strong>log2FoldChange > 0:</strong> Gene is upregulated in Treatment vs Control</li>
-                        <li><strong>log2FoldChange < 0:</strong> Gene is downregulated</li>
-                        <li><strong>|log2FC| > 1:</strong> Common threshold = 2-fold change</li>
-                        <li><strong>padj < 0.05:</strong> Statistically significant after FDR correction</li>
-                        <li><strong>baseMean:</strong> Average normalized count across all samples. Very low baseMean genes have unreliable estimates.</li>
-                        <li><strong>PCA:</strong> Samples should cluster by condition, not batch. If batch effect visible, include batch in model.</li>
-                        <li><strong>Dispersion plot:</strong> Points should follow the fitted line. Outlier points = high variability genes.</li>
-                        <li><strong>Cook's distance:</strong> Identifies outlier samples for specific genes. Flagged genes have padj = NA.</li>
-                    </ul>`
-                }
-            ]
-        }
-    },
-    {
-        id: "limma_analysis",
-        label: "limma-voom Analysis",
-        icon: "📉",
-        children: [],
-        content: {
-            title: "Differential Expression with limma-voom",
-            breadcrumb: ["Bioinformatics", "Transcriptomics", "limma-voom"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is limma?",
-                    body: `limma (Linear Models for Microarray Data) with voom transformation enables 
-                    analysis of RNA-Seq data using the same linear modeling framework originally developed 
-                    for microarrays. The voom function models the mean-variance relationship to generate 
-                    precision weights. limma is particularly powerful for complex experimental designs 
-                    (multiple factors, interactions, paired samples).`
-                },
-                {
-                    type: "code",
-                    language: "r",
-                    title: "limma-voom Analysis",
-                    code: `# ============================================
-# limma-voom for RNA-Seq
-# ============================================
-BiocManager::install(c("limma", "edgeR"))
-library(limma)
-library(edgeR)
-library(ggplot2)
-
-# Load count data
-counts <- read.table("counts/count_matrix.txt", header = TRUE, 
-                      row.names = 1, sep = "\\t")
-metadata <- read.csv("sample_metadata.csv", row.names = 1)
-
-# Create DGEList object
-dge <- DGEList(counts = counts, group = metadata$condition)
-
-# Filter lowly expressed genes
-keep <- filterByExpr(dge, group = metadata$condition)
-dge <- dge[keep, , keep.lib.sizes = FALSE]
-cat("Genes retained:", nrow(dge), "\\n")
-
-# TMM normalization
-dge <- calcNormFactors(dge, method = "TMM")
-
-# Design matrix
-design <- model.matrix(~ 0 + condition, data = metadata)
-colnames(design) <- gsub("condition", "", colnames(design))
-
-# Voom transformation
-v <- voom(dge, design, plot = TRUE)  # Plots mean-variance trend
-
-# Fit linear model
-fit <- lmFit(v, design)
-
-# Define contrasts
-contrasts <- makeContrasts(
-    TreatmentVsControl = Treatment - Control,
-    levels = design
-)
-
-# Apply contrasts and empirical Bayes
-fit2 <- contrasts.fit(fit, contrasts)
-fit2 <- eBayes(fit2)
-
-# Get results
-results <- topTable(fit2, coef = "TreatmentVsControl", 
-                     number = Inf, sort.by = "P")
-
-# Significant genes
-sig <- results[results$adj.P.Val < 0.05 & abs(results$logFC) > 1, ]
-cat("Significant DEGs:", nrow(sig), "\\n")
-
-# Visualizations
-# Volcano plot
-volcanoplot(fit2, coef = "TreatmentVsControl", 
-            highlight = 20, names = rownames(fit2))
-
-# MD plot
-plotMD(fit2, column = 1, status = results$adj.P.Val < 0.05)
-
-# Venn diagram (if multiple contrasts)
-# decideTests gives -1 (down), 0 (ns), 1 (up)
-dt <- decideTests(fit2, adjust.method = "BH", p.value = 0.05, lfc = 1)
-summary(dt)
-
-# Save
-write.csv(results, "results/limma_voom_results.csv")`
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>DESeq2 vs. limma-voom vs. edgeR</h3>
-                    <div class="table-wrapper">
-                        <table class="comparison-table">
-                            <thead>
-                                <tr><th>Feature</th><th>DESeq2</th><th>limma-voom</th><th>edgeR</th></tr>
-                            </thead>
-                            <tbody>
-                                <tr><td><strong>Model</strong></td><td>Negative Binomial GLM</td><td>Normal (log-CPM)</td><td>Negative Binomial GLM</td></tr>
-                                <tr><td><strong>Normalization</strong></td><td>Median of ratios</td><td>TMM (via edgeR)</td><td>TMM</td></tr>
-                                <tr><td><strong>Small samples (n<3)</strong></td><td>OK</td><td>Less power</td><td>OK</td></tr>
-                                <tr><td><strong>Complex designs</strong></td><td>Good</td><td>Excellent</td><td>Good</td></tr>
-                                <tr><td><strong>Speed</strong></td><td>Moderate</td><td>Fast</td><td>Fast</td></tr>
-                                <tr><td><strong>FC shrinkage</strong></td><td>Built-in (apeglm)</td><td>treat() function</td><td>No</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <p><strong>Recommendation:</strong> Use DESeq2 for straightforward designs, limma-voom 
-                    for complex designs, and consider running multiple tools for consensus.</p>
-                    `
-                }
-            ]
-        }
-    },
-    {
-        id: "geo2r_degear",
-        label: "GEO2R & DEGEAR",
-        icon: "🌐",
-        children: [],
-        content: {
-            title: "GEO2R & DEGEAR for GEO Data Analysis",
-            breadcrumb: ["Bioinformatics", "Transcriptomics", "GEO2R & DEGEAR"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is GEO2R?",
-                    body: `GEO2R is a web-based tool provided by NCBI to analyze Gene Expression Omnibus (GEO) 
-                    datasets directly in the browser. It uses limma (for microarray) or DESeq2 (for RNA-Seq) 
-                    to identify differentially expressed genes between user-defined groups.`
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>GEO2R Step-by-Step</h3>
-                    <ol>
-                        <li>Go to <a href="https://www.ncbi.nlm.nih.gov/geo/geo2r/" target="_blank">ncbi.nlm.nih.gov/geo/geo2r</a></li>
-                        <li>Enter GEO Series accession (e.g., GSE12345)</li>
-                        <li>Define groups (e.g., Control vs. Disease)</li>
-                        <li>Assign samples to groups</li>
-                        <li>Click "Analyze" → View results table</li>
-                        <li>Download full results table</li>
-                        <li>View R script used (for reproducibility)</li>
-                    </ol>
-                    
-                    <h3>DEGEAR</h3>
-                    <p><strong>DEGEAR</strong> (Differential Expression Gene Expression Analysis in R) is a 
-                    tool developed that provides enhanced analysis of GEO data with additional statistical 
-                    methods, visualizations, and downstream analysis options beyond what GEO2R offers.</p>
-                    
-                    <div class="info-box tip">
-                        <div class="info-title">💡 Pro Tip</div>
-                        <p>GEO2R is great for quick exploration, but for publication-quality analysis, 
-                        download the raw data and run your own pipeline with DESeq2 or limma for full 
-                        control over normalization, filtering, and batch correction.</p>
-                    </div>
-                    `
-                }
-            ]
-        }
-    }
-];
-
-// ----------------------------------------------------------------
-// 3G. SEQUENCE ANALYSIS (FUNDAMENTALS)
-// ----------------------------------------------------------------
-
-const sequenceAnalysisChildren = [
-    {
-        id: "seq_alignment",
-        label: "Sequence Alignment",
-        icon: "📐",
-        children: [
-            {
-                id: "pairwise_alignment",
-                label: "Pairwise Alignment",
-                icon: "↔️",
-                children: [],
-                content: {
-                    title: "Pairwise Sequence Alignment",
-                    breadcrumb: ["Bioinformatics", "Sequence Analysis", "Alignment", "Pairwise"],
-                    sections: [
-                        {
-                            type: "definition",
-                            title: "Overview",
-                            body: `Pairwise alignment finds the best way to align two sequences to identify 
-                            regions of similarity. Global alignment (Needleman-Wunsch) aligns entire sequences; 
-                            local alignment (Smith-Waterman) finds the best matching subsequences.`
-                        },
-                        {
-                            type: "math",
-                            title: "Dynamic Programming Algorithms",
-                            body: `
-                            <h4>Needleman-Wunsch (Global Alignment)</h4>
-                            <p>Fill matrix F(i,j) using recurrence:</p>
-                            <div class="formula">F(i,j) = max { F(i-1,j-1) + s(x<sub>i</sub>, y<sub>j</sub>), F(i-1,j) + d, F(i,j-1) + d }</div>
-                            <p>Where s(x,y) = substitution score, d = gap penalty</p>
-                            
-                            <h4>Smith-Waterman (Local Alignment)</h4>
-                            <div class="formula">F(i,j) = max { 0, F(i-1,j-1) + s(x<sub>i</sub>, y<sub>j</sub>), F(i-1,j) + d, F(i,j-1) + d }</div>
-                            <p>Key difference: scores cannot go below 0. Traceback starts from the maximum score.</p>
-                            
-                            <h4>Time Complexity: O(m × n)</h4>
-                            <p>Where m and n are the lengths of the two sequences.</p>
-                            `
-                        },
-                        {
-                            type: "html",
-                            body: `
-                            <h3>Scoring Matrices</h3>
-                            <ul>
-                                <li><strong>DNA:</strong> Simple match/mismatch scores (e.g., +1/-1)</li>
-                                <li><strong>Protein (PAM):</strong> PAM250 — for distantly related proteins</li>
-                                <li><strong>Protein (BLOSUM):</strong> BLOSUM62 — most commonly used; based on conserved blocks</li>
-                                <li><strong>Higher BLOSUM number</strong> (e.g., BLOSUM80) = for closely related sequences</li>
-                                <li><strong>Lower BLOSUM number</strong> (e.g., BLOSUM45) = for distantly related sequences</li>
-                            </ul>
-                            
-                            <h3>Gap Penalties</h3>
-                            <ul>
-                                <li><strong>Linear:</strong> γ(g) = -d × g (penalty proportional to gap length)</li>
-                                <li><strong>Affine:</strong> γ(g) = -d - (g-1) × e (separate gap opening and extension penalties)</li>
-                            </ul>
-                            `
-                        }
-                    ]
-                }
-            },
-            {
-                id: "msa",
-                label: "Multiple Sequence Alignment",
-                icon: "📊",
-                children: [],
-                content: {
-                    title: "Multiple Sequence Alignment (MSA)",
-                    breadcrumb: ["Bioinformatics", "Sequence Analysis", "Alignment", "MSA"],
-                    sections: [
-                        {
-                            type: "definition",
-                            title: "What is MSA?",
-                            body: `Multiple Sequence Alignment aligns three or more sequences simultaneously 
-                            to identify conserved regions, functional domains, and evolutionary relationships. 
-                            Exact MSA is NP-hard, so heuristic methods are used.`
-                        },
-                        {
-                            type: "html",
-                            body: `
-                            <h3>MSA Tools</h3>
-                            <div class="table-wrapper">
-                                <table class="comparison-table">
-                                    <thead>
-                                        <tr><th>Tool</th><th>Algorithm</th><th>Speed</th><th>Accuracy</th><th>Best For</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr><td><strong>MAFFT</strong></td><td>FFT-based progressive</td><td>Very Fast</td><td>High</td><td>General use, large datasets</td></tr>
-                                        <tr><td><strong>MUSCLE</strong></td><td>Iterative progressive</td><td>Fast</td><td>High</td><td>Protein alignments</td></tr>
-                                        <tr><td><strong>Clustal Omega</strong></td><td>HMM-based progressive</td><td>Moderate</td><td>Good</td><td>Very large datasets</td></tr>
-                                        <tr><td><strong>T-Coffee</strong></td><td>Consistency-based</td><td>Slow</td><td>Very High</td><td>Difficult alignments</td></tr>
-                                        <tr><td><strong>PRANK</strong></td><td>Phylogeny-aware</td><td>Slow</td><td>Best for phylo</td><td>Phylogenetic analysis</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                            `
-                        },
-                        {
-                            type: "code",
-                            language: "bash",
-                            title: "MSA Tools Usage",
-                            code: `# ============================================
-# Multiple Sequence Alignment
-# ============================================
-
-# --- MAFFT ---
-conda install -c bioconda mafft
-
-# Auto mode (selects best algorithm based on size)
-mafft --auto sequences.fasta > aligned.fasta
-
-# High accuracy for small datasets
-mafft --maxiterate 1000 --localpair sequences.fasta > aligned_accurate.fasta
-
-# Fast for large datasets (>2000 sequences)
-mafft --retree 1 sequences.fasta > aligned_fast.fasta
-
-# --- MUSCLE ---
-conda install -c bioconda muscle
-
-# MUSCLE v5
-muscle -align sequences.fasta -output aligned.fasta
-
-# --- Clustal Omega ---
-conda install -c bioconda clustalo
-
-clustalo -i sequences.fasta \\
-    -o aligned.fasta \\
-    --threads 8 \\
-    --outfmt fasta \\
-    -v
-
-# --- Alignment trimming ---
-# trimAl
-conda install -c bioconda trimal
-trimal -in aligned.fasta -out trimmed.fasta -automated1
-
-# Gblocks
-conda install -c bioconda gblocks
-Gblocks aligned.fasta -t=d  # DNA
-Gblocks aligned.fasta -t=p  # Protein
-
-# --- View alignment ---
-# AliView (GUI): https://ormbunkar.se/aliview/
-# Jalview (GUI): https://www.jalview.org/
-# Command-line viewer:
-alv aligned.fasta  # pip install alv`
-                        }
-                    ]
-                }
-            }
-        ],
-        content: {
-            title: "Sequence Alignment",
-            breadcrumb: ["Bioinformatics", "Sequence Analysis", "Alignment"],
-            sections: [{
-                type: "html",
-                body: `<p>Sequence alignment is the fundamental technique in bioinformatics for comparing 
-                biological sequences (DNA, RNA, protein). It identifies regions of similarity that may 
-                be a consequence of functional, structural, or evolutionary relationships.</p>`
-            }]
-        }
-    },
-    {
-        id: "blast_search",
-        label: "BLAST & Homology Search",
-        icon: "🔍",
-        children: [],
-        content: {
-                // Continuing from your last line:
-    // "BLAST & Sequence Similarity Search",
-    // breadcrumb: ["Bioinformatics", "Sequence Analysis",
-
-            title: "BLAST & Sequence Similarity Search",
-            breadcrumb: ["Bioinformatics", "Sequence Analysis", "BLAST & Homology Search"],
-            sections: [
-                {
-                    type: "definition",
-                    title: "What is BLAST?",
-                    body: `BLAST (Basic Local Alignment Search Tool) is the most widely used tool for finding regions of local similarity between biological sequences (DNA, RNA, protein) and large sequence databases. It uses a fast heuristic algorithm that approximates the Smith-Waterman local alignment.`
-                },
-                {
-                    type: "html",
-                    body: `
-                    <h3>Common BLAST Variants</h3>
-                    <ul>
-                        <li><strong>blastn</strong> — nucleotide vs nucleotide</li>
-                        <li><strong>blastp</strong> — protein vs protein</li>
-                        <li><strong>blastx</strong> — translated nucleotide vs protein</li>
-                        <li><strong>tblastn</strong> — protein vs translated nucleotide</li>
-                        <li><strong>tblastx</strong> — translated nucleotide vs translated nucleotide</li>
-                    </ul>
-                    `
-                }
-            ]
-        }
-    }
-];
-
-// ────────────────────────────────────────────────
-//   Optional: minimal placeholders for other major branches
-//   (you can expand them later the same way)
-// ────────────────────────────────────────────────
-
-const genomicsChildren = [
-    { id: "ngs-preprocessing", label: "NGS Preprocessing", icon: "⚙️" },
-    { id: "genome-assembly",    label: "Genome Assembly",  icon: "🛠️" },
-    { id: "variant-calling",    label: "Variant Calling",  icon: "🔍" }
-];
-
-const systemsBiologyChildren = [
-    { id: "network-analysis",     label: "Network Analysis",     icon: "🕸️" },
-    { id: "metabolic-modeling",   label: "Metabolic Modeling",   icon: "⚗️" },
-    { id: "multi-omics",          label: "Multi-omics Integration", icon: "🔄" }
-];
-
-// ────────────────────────────────────────────────
-//   INTEGRATION — connect children to TREE_DATA
-// ────────────────────────────────────────────────
-
-function integrateAllChildren() {
-    const mappings = {
-        'sequence-analysis':     sequenceAnalysisChildren,
-        'genomics':              genomicsChildren,
-        'systems-biology':       systemsBiologyChildren,
-        // Add more when you expand them:
-        // 'phylogenetics':         phylogeneticsChildren,
-        // 'metagenomics':          metagenomicsChildren,
-        // 'structural-bioinformatics': structuralChildren,
-        // 'comparative-genomics':  comparativeGenomicsChildren,
-        // 'functional-genomics':   functionalGenomicsChildren,
-        // 'transcriptomics':       transcriptomicsChildren
-    };
-
-    Object.entries(mappings).forEach(([parentId, childArray]) => {
-        const parent = findNode(parentId);
-        if (parent) {
-            parent.children = childArray;
-        }
-    });
-}
-
-integrateAllChildren();
-
-// ────────────────────────────────────────────────
-//   AUTO-GENERATE CONTENT[] FROM .content.sections
-// ────────────────────────────────────────────────
-
-function generateContentFromNode(node) {
-    if (!node.content || !node.content.sections) return null;
-
-    let html = `<h2>${node.content.title || node.label}</h2>`;
-
-    node.content.sections.forEach(sec => {
-        let block = '';
-
-        if (sec.type === 'definition') {
-            block = infoBox('definition', sec.title, `<p>${sec.body}</p>`);
-        } else if (sec.type === 'html') {
-            block = sec.body;
-        } else if (sec.type === 'code') {
-            block = `<h4>${sec.title || 'Code Example'}</h4>` +
-                    codeBlock(sec.language || 'bash', sec.code);
-        }
-
-        html += block;
+    const q = query.toLowerCase();
+    const results = [];
+
+    state.flatNodes.forEach(node => {
+      let score = 0;
+      const label = (node.label || "").toLowerCase();
+      const c = node.content || {};
+
+      // Label match
+      if (label.includes(q)) score += 10;
+      if (label.startsWith(q)) score += 5;
+
+      // Content match
+      const what = (c.what || "").toLowerCase();
+      if (what.includes(q)) score += 3;
+
+      // Tools match
+      if (c.tools) {
+        c.tools.forEach(t => {
+          if ((t.name || "").toLowerCase().includes(q)) score += 7;
+          if ((t.desc || "").toLowerCase().includes(q)) score += 2;
+        });
+      }
+
+      // Databases match
+      if (c.databases) {
+        c.databases.forEach(d => {
+          if ((d.name || "").toLowerCase().includes(q)) score += 7;
+        });
+      }
+
+      // Algorithms
+      if (c.algorithms) {
+        c.algorithms.forEach(a => {
+          if ((a.name || "").toLowerCase().includes(q)) score += 6;
+        });
+      }
+
+      // Questions
+      if (c.questions) {
+        c.questions.forEach(question => {
+          if (question.toLowerCase().includes(q)) score += 2;
+        });
+      }
+
+      if (score > 0) {
+        results.push({ node, score });
+      }
     });
 
-    return () => sectionCard(html);
-}
+    results.sort((a, b) => b.score - a.score);
+    const top = results.slice(0, 20);
 
-function autoPopulateContent() {
-    function traverse(node) {
-        if (node.content) {
-            CONTENT[node.id] = generateContentFromNode(node);
-        }
-        if (node.children) {
-            node.children.forEach(traverse);
-        }
+    if (top.length === 0) {
+      modalSearchResults.innerHTML = `<div class="search-empty"><p>No results found for "<strong>${escapeHTML(query)}</strong>".</p></div>`;
+      return;
     }
-    traverse(TREE_DATA);
-}
 
-autoPopulateContent();
+    let html = "";
+    top.forEach(r => {
+      const n = r.node;
+      const pathStr = n.path ? n.path.join(" › ") : n.label;
+      html += `<div class="search-result-item" data-search-id="${n.id}">`;
+      html += `<span class="result-icon">${n.icon || "📄"}</span>`;
+      html += `<div class="result-info"><div class="result-title">${escapeHTML(n.label)}</div><div class="result-path">${escapeHTML(pathStr)}</div></div>`;
+      html += `<span class="result-arrow">→</span>`;
+      html += `</div>`;
+    });
+    modalSearchResults.innerHTML = html;
 
-// ────────────────────────────────────────────────
-//   FINAL INITIALIZATION
-// ────────────────────────────────────────────────
+    // Attach click
+    $$(".search-result-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const targetId = item.dataset.searchId;
+        closeSearch();
+        navigateTo(targetId);
+      });
+    });
+  }
 
-function initializeBioinfoArchive() {
-    // Rebuild search index after children were replaced
-    state.nodeIndex = [];
-    buildNodeIndex(TREE_DATA);
 
-    // Render UI
+  // ==============================================================
+  //  SECTION 10: SIDEBAR RESIZE
+  // ==============================================================
+
+  const sidebar = $("#sidebar");
+  const resizeHandle = $("#resizeHandle");
+  let isResizing = false;
+
+  resizeHandle.addEventListener("mousedown", (e) => {
+    isResizing = true;
+    resizeHandle.classList.add("active");
+    document.addEventListener("mousemove", onResize);
+    document.addEventListener("mouseup", stopResize);
+    e.preventDefault();
+  });
+
+  function onResize(e) {
+    if (!isResizing) return;
+    const newWidth = Math.min(Math.max(e.clientX, 240), 600);
+    sidebar.style.width = newWidth + "px";
+    state.sidebarWidth = newWidth;
+  }
+
+  function stopResize() {
+    isResizing = false;
+    resizeHandle.classList.remove("active");
+    document.removeEventListener("mousemove", onResize);
+    document.removeEventListener("mouseup", stopResize);
+    localStorage.setItem("bioinfo-sidebar-w", state.sidebarWidth);
+  }
+
+
+  // ==============================================================
+  //  SECTION 11: SCROLL TO TOP
+  // ==============================================================
+
+  const scrollTopBtn = $("#scrollTop");
+
+  contentPanel.addEventListener("scroll", () => {
+    if (contentPanel.scrollTop > 300) {
+      scrollTopBtn.classList.add("visible");
+    } else {
+      scrollTopBtn.classList.remove("visible");
+    }
+  });
+
+  scrollTopBtn.addEventListener("click", () => {
+    contentPanel.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+
+  // ==============================================================
+  //  SECTION 12: INITIALIZATION
+  // ==============================================================
+
+  function init() {
+    // Apply theme
+    applyTheme(state.theme);
+
+    // Set sidebar width
+    sidebar.style.width = state.sidebarWidth + "px";
+
+    // Render tree
     renderTree();
-    activateNode('root');
 
-    // Activate features
-    initSearch();
-    initTheme();
-    initResize();
-    initScrollTop();
-    initTreeControls();
-    initLoader();
-    updateStats();
-}
+    // Render initial content
+    renderContent("root");
+    updateBreadcrumb("root");
 
-// Run when page is ready
-window.addEventListener('load', initializeBioinfoArchive);
+    // Update footer stats
+    const stats = countStats(KNOWLEDGE_TREE);
+    const totalTopicsEl = $("#totalTopics");
+    const totalToolsEl = $("#totalTools");
+    const totalWorkflowsEl = $("#totalWorkflows");
+    if (totalTopicsEl) totalTopicsEl.textContent = stats.topics;
+    if (totalToolsEl) totalToolsEl.textContent = stats.tools;
+    if (totalWorkflowsEl) totalWorkflowsEl.textContent = stats.workflows;
 
-// ────────────────────────────────────────────────
-//   End of script — close the IIFE
-// ────────────────────────────────────────────────
+    // Theme toggle
+    $("#themeToggle").addEventListener("click", () => {
+      applyTheme(state.theme === "dark" ? "light" : "dark");
+    });
+
+    // Expand / Collapse all
+    $("#expandAll").addEventListener("click", () => {
+      state.flatNodes.forEach(n => state.expandedNodes.add(n.id));
+      renderTree();
+    });
+
+    $("#collapseAll").addEventListener("click", () => {
+      state.expandedNodes.clear();
+      state.expandedNodes.add("root");
+      renderTree();
+    });
+
+    // Header search — open modal
+    headerSearchInput.addEventListener("focus", (e) => {
+      e.target.blur();
+      openSearch();
+    });
+
+    // Keyboard shortcut Ctrl+K
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        openSearch();
+      }
+      if (e.key === "Escape") {
+        closeSearch();
+      }
+    });
+
+    // Modal search input
+    modalSearchInput.addEventListener("input", (e) => {
+      performSearch(e.target.value);
+    });
+
+    // Close modal on overlay click
+    searchModal.addEventListener("click", (e) => {
+      if (e.target === searchModal) closeSearch();
+    });
+
+    // Hide loader
+    setTimeout(() => {
+      const loader = $("#loader");
+      if (loader) loader.classList.add("hidden");
+    }, 800);
+  }
+
+  // Run
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+
 })();
-// Initialize on DOM ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeBioinfoArchive);
-} else {
-    initializeBioinfoArchive();
-}
-function initializeBioinfoArchive() {
-    // ... your initialization code ...
-    
-    // At the end, hide the loader:
-    const loader = $('#loader');
-    if (loader) {
-        loader.classList.add('hidden');
-    }
-}
