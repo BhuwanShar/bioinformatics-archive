@@ -4811,3 +4811,18 @@ window.addEventListener('load', initializeBioinfoArchive);
 //   End of script — close the IIFE
 // ────────────────────────────────────────────────
 })();
+// Initialize on DOM ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeBioinfoArchive);
+} else {
+    initializeBioinfoArchive();
+}
+function initializeBioinfoArchive() {
+    // ... your initialization code ...
+    
+    // At the end, hide the loader:
+    const loader = $('#loader');
+    if (loader) {
+        loader.classList.add('hidden');
+    }
+}
