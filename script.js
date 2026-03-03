@@ -2030,7 +2030,8 @@ document.querySelectorAll('.tree-node-header').forEach(node => {
         if (window.innerWidth <= 768) {
             closeSidebar();
         }
-    });
+    
 });
 })();
+
 
