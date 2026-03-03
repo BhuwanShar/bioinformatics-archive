@@ -6,17 +6,15 @@
     <meta name="description" content="A comprehensive bioinformatics knowledge archive with interactive decision trees, reproducible workflows, and step-by-step guides.">
     <meta name="author" content="Bhuwan Sharma">
     <meta name="theme-color" content="#0d1117">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Bioinformatics Knowledge Archive | Bhuwan Sharma</title>
-    <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- ======================== LOADER ======================== -->
+    <!-- LOADER -->
     <div class="loader-overlay" id="loader">
         <div class="loader-content">
             <div class="dna-helix">
@@ -27,11 +25,10 @@
         </div>
     </div>
 
-    <!-- ======================== HEADER ======================== -->
+    <!-- HEADER -->
     <header class="header" id="header">
         <div class="header-inner">
 
-            <!-- Left: Brand -->
             <div class="header-brand">
                 <span class="brand-icon">🧬</span>
                 <div class="brand-text">
@@ -40,49 +37,37 @@
                 </div>
             </div>
 
-            <!-- Right: Actions -->
             <div class="header-actions">
 
-                <!-- Search bar (hidden on mobile, replaced by modal) -->
                 <div class="search-container" id="headerSearch">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
-                    <input
-                        type="text"
-                        id="searchInput"
-                        placeholder="Search tools, methods, concepts..."
-                        autocomplete="off"
-                        spellcheck="false"
-                    >
+                    <input type="text" id="searchInput" placeholder="Search tools, methods, concepts..." autocomplete="off" spellcheck="false">
                     <kbd class="search-kbd">Ctrl+K</kbd>
                 </div>
 
-                <!-- Search button (visible on mobile to open modal) -->
-                <button class="btn-icon" id="searchToggle" title="Search">
+                <button class="btn-icon" id="searchToggle" title="Search" aria-label="Open search">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
                         <circle cx="11" cy="11" r="8"></circle>
                         <path d="m21 21-4.35-4.35"></path>
                     </svg>
                 </button>
 
-                <!-- Theme toggle -->
-                <button class="btn-icon" id="themeToggle" title="Toggle theme" aria-label="Toggle dark/light theme">
+                <button class="btn-icon" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
                         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                     </svg>
                 </button>
 
-                <!-- GitHub link -->
-                <a href="https://github.com/BhuwanShar/" target="_blank" rel="noopener noreferrer" class="btn-icon" title="GitHub" aria-label="GitHub Profile">
+                <a href="https://github.com/BhuwanShar/" target="_blank" rel="noopener noreferrer" class="btn-icon" title="GitHub" aria-label="GitHub">
                     <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
                         <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"></path>
                     </svg>
                 </a>
 
-                <!-- Mobile menu toggle (hamburger) — shown only on mobile via CSS -->
-                <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Open navigation menu">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Open menu">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
                         <line x1="3" y1="6" x2="21" y2="6"></line>
                         <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -94,26 +79,24 @@
         </div>
     </header>
 
-    <!-- ======================== BREADCRUMB ======================== -->
-    <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb navigation">
+    <!-- BREADCRUMB -->
+    <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb">
         <div class="breadcrumb-inner">
             <span class="breadcrumb-item" data-id="home">🏠 Home</span>
             <span class="breadcrumb-current" id="breadcrumbCurrent"></span>
         </div>
     </nav>
 
-    <!-- ======================== MAIN LAYOUT ======================== -->
+    <!-- MAIN LAYOUT -->
     <main class="main-container" id="mainContainer">
 
-        <!-- Mobile sidebar overlay (click to close sidebar) -->
         <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-        <!-- SIDEBAR (slide-out drawer on mobile) -->
-        <aside class="sidebar" id="sidebar" role="navigation" aria-label="Knowledge tree navigation">
-
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <span class="sidebar-title">📂 Knowledge Tree</span>
-                <button class="btn-icon btn-sm" id="collapseAll" title="Collapse all" aria-label="Collapse all tree nodes">
+                <button class="btn-icon btn-sm" id="collapseAll" title="Collapse all" aria-label="Collapse all">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                         <polyline points="4 14 10 14 10 20"></polyline>
                         <polyline points="20 10 14 10 14 4"></polyline>
@@ -121,7 +104,7 @@
                         <line x1="3" y1="21" x2="10" y2="14"></line>
                     </svg>
                 </button>
-                <button class="btn-icon btn-sm" id="expandAll" title="Expand all" aria-label="Expand all tree nodes">
+                <button class="btn-icon btn-sm" id="expandAll" title="Expand all" aria-label="Expand all">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                         <polyline points="15 3 21 3 21 9"></polyline>
                         <polyline points="9 21 3 21 3 15"></polyline>
@@ -129,51 +112,41 @@
                         <line x1="3" y1="21" x2="10" y2="14"></line>
                     </svg>
                 </button>
-
-                <!-- Close button — only visible on mobile via CSS -->
-                <button class="sidebar-close" id="sidebarClose" aria-label="Close navigation menu">
+                <button class="sidebar-close" id="sidebarClose" aria-label="Close menu">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                         <line x1="18" y1="6" x2="6" y2="18"></line>
                         <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
                 </button>
             </div>
-
-            <div class="sidebar-tree" id="treeContainer">
-                <!-- Tree nodes rendered by JavaScript -->
-            </div>
-
+            <div class="sidebar-tree" id="treeContainer"></div>
         </aside>
 
-        <!-- RESIZE HANDLE (hidden on mobile via CSS) -->
-        <div class="resize-handle" id="resizeHandle" role="separator" aria-orientation="vertical"></div>
+        <!-- RESIZE HANDLE -->
+        <div class="resize-handle" id="resizeHandle"></div>
 
-        <!-- CONTENT PANEL -->
-        <section class="content-panel" id="contentPanel" role="main" aria-label="Main content area">
-            <!-- Dynamic content rendered here by JavaScript -->
-        </section>
+        <!-- CONTENT -->
+        <section class="content-panel" id="contentPanel"></section>
 
     </main>
 
-    <!-- ======================== SCROLL TO TOP ======================== -->
-    <button class="scroll-top" id="scrollTop" title="Scroll to top" aria-label="Scroll to top of page">
+    <!-- SCROLL TO TOP -->
+    <button class="scroll-top" id="scrollTop" title="Scroll to top" aria-label="Scroll to top">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20">
             <polyline points="18 15 12 9 6 15"></polyline>
         </svg>
     </button>
 
-    <!-- ======================== FOOTER ======================== -->
+    <!-- FOOTER -->
     <footer class="footer">
         <div class="footer-inner">
-
             <div class="footer-brand">
                 <span class="footer-logo">🧬</span>
                 <div>
-                    <p class="footer-title">Bioinformatics Knowledge Archive</p>
+                    <p class="footer-title">Bioinformatics Archive</p>
                     <p class="footer-copy">&copy; 2026 Bhuwan Sharma. All rights reserved.</p>
                 </div>
             </div>
-
             <div class="footer-links">
                 <a href="https://github.com/BhuwanShar/" target="_blank" rel="noopener noreferrer">
                     <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
@@ -188,382 +161,33 @@
                     LinkedIn
                 </a>
             </div>
-
             <div class="footer-stats">
                 <span id="totalTopics">0</span> Topics &bull;
                 <span id="totalTools">0</span> Tools &bull;
                 <span id="totalWorkflows">0</span> Workflows
             </div>
-
         </div>
     </footer>
 
-    <!-- ======================== SEARCH MODAL ======================== -->
-    <div class="modal-overlay" id="searchModal" role="dialog" aria-modal="true" aria-label="Search">
+    <!-- SEARCH MODAL -->
+    <div class="modal-overlay" id="searchModal">
         <div class="search-modal">
-
             <div class="search-modal-header">
                 <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
                     <circle cx="11" cy="11" r="8"></circle>
                     <path d="m21 21-4.35-4.35"></path>
                 </svg>
-                <input
-                    type="text"
-                    id="modalSearchInput"
-                    placeholder="Type to search across all topics..."
-                    autocomplete="off"
-                    spellcheck="false"
-                >
+                <input type="text" id="modalSearchInput" placeholder="Type to search across all topics..." autocomplete="off" spellcheck="false">
                 <kbd>ESC</kbd>
             </div>
-
             <div class="search-modal-results" id="modalSearchResults">
                 <div class="search-empty">
                     <p>🔍 Start typing to search across all bioinformatics topics, tools, and workflows.</p>
                 </div>
             </div>
-
         </div>
     </div>
 
-    <!-- ======================== SCRIPTS ======================== -->
     <script src="script.js"></script>
-
-    <!-- Mobile sidebar + scroll-to-top + core UI logic -->
-    <script>
-    (function() {
-        'use strict';
-
-        // ──────────────────────────────────────
-        // LOADER
-        // ──────────────────────────────────────
-        window.addEventListener('load', function() {
-            var loader = document.getElementById('loader');
-            if (loader) {
-                setTimeout(function() {
-                    loader.classList.add('hidden');
-                }, 600);
-            }
-        });
-
-        // ──────────────────────────────────────
-        // THEME TOGGLE
-        // ──────────────────────────────────────
-        var themeToggle = document.getElementById('themeToggle');
-        var html = document.documentElement;
-
-        // Load saved theme
-        var savedTheme = localStorage.getItem('bka-theme');
-        if (savedTheme) {
-            html.setAttribute('data-theme', savedTheme);
-        }
-
-        if (themeToggle) {
-            themeToggle.addEventListener('click', function() {
-                var current = html.getAttribute('data-theme');
-                var next = current === 'dark' ? 'light' : 'dark';
-                html.setAttribute('data-theme', next);
-                localStorage.setItem('bka-theme', next);
-
-                // Update theme-color meta tag
-                var metaTheme = document.querySelector('meta[name="theme-color"]');
-                if (metaTheme) {
-                    metaTheme.setAttribute('content', next === 'dark' ? '#0d1117' : '#ffffff');
-                }
-            });
-        }
-
-        // ──────────────────────────────────────
-        // MOBILE SIDEBAR TOGGLE
-        // ──────────────────────────────────────
-        var menuToggle = document.getElementById('mobileMenuToggle');
-        var sidebar = document.getElementById('sidebar');
-        var overlay = document.getElementById('sidebarOverlay');
-        var sidebarClose = document.getElementById('sidebarClose');
-
-        function openSidebar() {
-            if (sidebar) sidebar.classList.add('mobile-open');
-            if (overlay) overlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeSidebar() {
-            if (sidebar) sidebar.classList.remove('mobile-open');
-            if (overlay) overlay.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-
-        if (menuToggle) {
-            menuToggle.addEventListener('click', function(e) {
-                e.stopPropagation();
-                openSidebar();
-            });
-        }
-
-        if (overlay) {
-            overlay.addEventListener('click', closeSidebar);
-        }
-
-        if (sidebarClose) {
-            sidebarClose.addEventListener('click', closeSidebar);
-        }
-
-        // Close sidebar when a tree node is clicked on mobile
-        document.addEventListener('click', function(e) {
-            var nodeHeader = e.target.closest('.tree-node-header');
-            if (nodeHeader && window.innerWidth <= 768) {
-                // Small delay so the node click registers first
-                setTimeout(closeSidebar, 150);
-            }
-        });
-
-        // Close sidebar on escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeSidebar();
-            }
-        });
-
-        // Close sidebar if window resizes to desktop
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 768) {
-                closeSidebar();
-            }
-        });
-
-        // ──────────────────────────────────────
-        // SEARCH MODAL
-        // ──────────────────────────────────────
-        var searchModal = document.getElementById('searchModal');
-        var modalInput = document.getElementById('modalSearchInput');
-        var headerSearchInput = document.getElementById('searchInput');
-        var searchToggleBtn = document.getElementById('searchToggle');
-
-        function openSearchModal() {
-            if (searchModal) {
-                searchModal.classList.add('open');
-                document.body.style.overflow = 'hidden';
-                if (modalInput) {
-                    setTimeout(function() {
-                        modalInput.focus();
-                    }, 100);
-                }
-            }
-        }
-
-        function closeSearchModal() {
-            if (searchModal) {
-                searchModal.classList.remove('open');
-                // Only restore scroll if sidebar isn't open
-                if (!sidebar || !sidebar.classList.contains('mobile-open')) {
-                    document.body.style.overflow = '';
-                }
-                if (modalInput) modalInput.value = '';
-            }
-        }
-
-        // Ctrl+K or Cmd+K to open search
-        document.addEventListener('keydown', function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                openSearchModal();
-            }
-            if (e.key === 'Escape' && searchModal && searchModal.classList.contains('open')) {
-                closeSearchModal();
-            }
-        });
-
-        // Click header search input to open modal
-        if (headerSearchInput) {
-            headerSearchInput.addEventListener('focus', function() {
-                this.blur();
-                openSearchModal();
-            });
-        }
-
-        // Mobile search button opens modal
-        if (searchToggleBtn) {
-            searchToggleBtn.addEventListener('click', openSearchModal);
-        }
-
-        // Click overlay to close modal
-        if (searchModal) {
-            searchModal.addEventListener('click', function(e) {
-                if (e.target === searchModal) {
-                    closeSearchModal();
-                }
-            });
-        }
-
-        // ──────────────────────────────────────
-        // SCROLL TO TOP BUTTON
-        // ──────────────────────────────────────
-        var scrollTopBtn = document.getElementById('scrollTop');
-        var contentPanel = document.getElementById('contentPanel');
-
-        function checkScrollTop() {
-            // On mobile, check window scroll; on desktop, check content panel
-            var scrollY;
-            if (window.innerWidth <= 768) {
-                scrollY = window.pageYOffset || document.documentElement.scrollTop;
-            } else {
-                scrollY = contentPanel ? contentPanel.scrollTop : 0;
-            }
-
-            if (scrollTopBtn) {
-                if (scrollY > 300) {
-                    scrollTopBtn.classList.add('visible');
-                } else {
-                    scrollTopBtn.classList.remove('visible');
-                }
-            }
-        }
-
-        if (scrollTopBtn) {
-            scrollTopBtn.addEventListener('click', function() {
-                if (window.innerWidth <= 768) {
-                    // Mobile: scroll the window
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                } else {
-                    // Desktop: scroll the content panel
-                    if (contentPanel) {
-                        contentPanel.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                }
-            });
-        }
-
-        // Listen for scroll on both window and content panel
-        window.addEventListener('scroll', checkScrollTop, { passive: true });
-        if (contentPanel) {
-            contentPanel.addEventListener('scroll', checkScrollTop, { passive: true });
-        }
-
-        // ──────────────────────────────────────
-        // RESIZE HANDLE (Desktop only)
-        // ──────────────────────────────────────
-        var resizeHandle = document.getElementById('resizeHandle');
-
-        if (resizeHandle && sidebar) {
-            var isResizing = false;
-
-            resizeHandle.addEventListener('mousedown', function(e) {
-                if (window.innerWidth <= 768) return;
-                isResizing = true;
-                resizeHandle.classList.add('active');
-                document.body.style.cursor = 'col-resize';
-                document.body.style.userSelect = 'none';
-                e.preventDefault();
-            });
-
-            document.addEventListener('mousemove', function(e) {
-                if (!isResizing) return;
-                var newWidth = e.clientX;
-                if (newWidth >= 240 && newWidth <= 600) {
-                    sidebar.style.width = newWidth + 'px';
-                }
-            });
-
-            document.addEventListener('mouseup', function() {
-                if (isResizing) {
-                    isResizing = false;
-                    resizeHandle.classList.remove('active');
-                    document.body.style.cursor = '';
-                    document.body.style.userSelect = '';
-                }
-            });
-        }
-
-        // ──────────────────────────────────────
-        // COLLAPSE / EXPAND ALL
-        // ──────────────────────────────────────
-        var collapseAllBtn = document.getElementById('collapseAll');
-        var expandAllBtn = document.getElementById('expandAll');
-
-        if (collapseAllBtn) {
-            collapseAllBtn.addEventListener('click', function() {
-                var allChildren = document.querySelectorAll('.tree-node-children');
-                var allToggles = document.querySelectorAll('.tree-toggle');
-                allChildren.forEach(function(el) { el.classList.remove('expanded'); });
-                allToggles.forEach(function(el) { el.classList.remove('expanded'); });
-            });
-        }
-
-        if (expandAllBtn) {
-            expandAllBtn.addEventListener('click', function() {
-                var allChildren = document.querySelectorAll('.tree-node-children');
-                var allToggles = document.querySelectorAll('.tree-toggle:not(.leaf)');
-                allChildren.forEach(function(el) { el.classList.add('expanded'); });
-                allToggles.forEach(function(el) { el.classList.add('expanded'); });
-            });
-        }
-
-        // ──────────────────────────────────────
-        // CODE BLOCK COPY BUTTONS
-        // ──────────────────────────────────────
-        document.addEventListener('click', function(e) {
-            var copyBtn = e.target.closest('.code-block-copy');
-            if (!copyBtn) return;
-
-            var codeBlock = copyBtn.closest('.code-block');
-            if (!codeBlock) return;
-
-            var pre = codeBlock.querySelector('pre');
-            if (!pre) return;
-
-            var text = pre.textContent || pre.innerText;
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).then(function() {
-                    copyBtn.classList.add('copied');
-                    copyBtn.innerHTML = '✓ Copied';
-                    setTimeout(function() {
-                        copyBtn.classList.remove('copied');
-                        copyBtn.innerHTML = '📋 Copy';
-                    }, 2000);
-                });
-            } else {
-                // Fallback for older browsers
-                var textarea = document.createElement('textarea');
-                textarea.value = text;
-                textarea.style.position = 'fixed';
-                textarea.style.opacity = '0';
-                document.body.appendChild(textarea);
-                textarea.select();
-                try {
-                    document.execCommand('copy');
-                    copyBtn.classList.add('copied');
-                    copyBtn.innerHTML = '✓ Copied';
-                    setTimeout(function() {
-                        copyBtn.classList.remove('copied');
-                        copyBtn.innerHTML = '📋 Copy';
-                    }, 2000);
-                } catch (err) {
-                    console.error('Copy failed', err);
-                }
-                document.body.removeChild(textarea);
-            }
-        });
-
-        // ──────────────────────────────────────
-        // ERROR/TROUBLESHOOT ACCORDION
-        // ──────────────────────────────────────
-        document.addEventListener('click', function(e) {
-            var errorHeader = e.target.closest('.error-header');
-            if (!errorHeader) return;
-
-            var errorItem = errorHeader.closest('.error-item');
-            if (!errorItem) return;
-
-            var solution = errorItem.querySelector('.error-solution');
-            var toggle = errorHeader.querySelector('.error-toggle');
-
-            if (solution) solution.classList.toggle('open');
-            if (toggle) toggle.classList.toggle('open');
-        });
-
-    })();
-    </script>
-
 </body>
 </html>
