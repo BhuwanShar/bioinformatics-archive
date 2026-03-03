@@ -2003,5 +2003,34 @@
   } else {
     init();
   }
+// Mobile sidebar toggle
+const menuToggle = document.querySelector('.mobile-menu-toggle');
+const sidebar = document.querySelector('.sidebar');
+const overlay = document.querySelector('.sidebar-overlay');
+const sidebarClose = document.querySelector('.sidebar-close');
 
+function openSidebar() {
+    sidebar.classList.add('mobile-open');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden'; // Lock body scroll when drawer open
+}
+
+function closeSidebar() {
+    sidebar.classList.remove('mobile-open');
+    overlay.classList.remove('active');
+    document.body.style.overflow = ''; // Restore scroll
+}
+
+if (menuToggle) menuToggle.addEventListener('click', openSidebar);
+if (overlay) overlay.addEventListener('click', closeSidebar);
+if (sidebarClose) sidebarClose.addEventListener('click', closeSidebar);
+
+// Close sidebar when a tree node is clicked on mobile
+document.querySelectorAll('.tree-node-header').forEach(node => {
+    node.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+            closeSidebar();
+        }
+    });
+});
 })();
