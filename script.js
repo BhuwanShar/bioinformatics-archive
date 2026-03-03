@@ -1,7 +1,6 @@
 // ================================================================
-//  BIOINFORMATICS KNOWLEDGE ARCHIVE — Complete Script
+//  BIOINFORMATICS ARCHIVE — Complete Script
 //  Created by Bhuwan Sharma | © 2026
-//  Single self-contained file — no external dependencies
 // ================================================================
 
 (function () {
@@ -2034,3 +2033,4 @@ document.querySelectorAll('.tree-node-header').forEach(node => {
     });
 });
 })();
+
