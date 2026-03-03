@@ -1,5 +1,5 @@
 /* ================================================================
-   BIOINFORMATICS ARCHIVE
+   BIOINFORMATICS KNOWLEDGE ARCHIVE
    Created by Bhuwan Sharma | © 2026
    ================================================================ */
 
@@ -62,7 +62,6 @@
     --header-height: 64px;
     --breadcrumb-height: 40px;
     --footer-height: auto;
-    --mobile-nav-height: 56px;
     --radius: 12px;
     --radius-sm: 8px;
     --radius-xs: 4px;
@@ -71,7 +70,6 @@
     /* Transitions */
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --transition-fast: 150ms var(--ease-in-out);
     --transition: 250ms var(--ease-in-out);
     --transition-slow: 400ms var(--ease-out);
@@ -80,18 +78,7 @@
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
 
-    /* Spacing scale */
-    --space-1: 0.25rem;
-    --space-2: 0.5rem;
-    --space-3: 0.75rem;
-    --space-4: 1rem;
-    --space-5: 1.25rem;
-    --space-6: 1.5rem;
-    --space-8: 2rem;
-    --space-10: 2.5rem;
-    --space-12: 3rem;
-
-    /* Safe areas for notched phones */
+    /* Safe areas */
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
@@ -128,7 +115,7 @@
 }
 
 /* ----------------------------------------------------------------
-   RESET & BASE
+   RESET & BASE — THE SCROLL FIX STARTS HERE
    ---------------------------------------------------------------- */
 *, *::before, *::after {
     margin: 0;
@@ -144,8 +131,7 @@ html {
     -webkit-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    overflow-x: hidden;
-    height: 100%;
+    /* CRITICAL: Do NOT set overflow hidden or height 100% here */
 }
 
 body {
@@ -154,10 +140,11 @@ body {
     color: var(--text-primary);
     line-height: 1.6;
     min-height: 100vh;
-    min-height: 100dvh;
+    /* CRITICAL FIX: Let body scroll naturally, no overflow hidden */
     overflow-x: hidden;
+    overflow-y: auto;
     -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
+    -webkit-overflow-scrolling: touch;
 }
 
 a {
@@ -184,7 +171,6 @@ button, input, select, textarea {
     font-size: inherit;
 }
 
-/* Touch action optimization */
 button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
     touch-action: manipulation;
 }
@@ -198,7 +184,6 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-/* Thin scrollbar for Firefox */
 * {
     scrollbar-width: thin;
     scrollbar-color: var(--border-default) transparent;
@@ -282,17 +267,16 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
     z-index: 100;
     backdrop-filter: blur(16px) saturate(180%);
     -webkit-backdrop-filter: blur(16px) saturate(180%);
-    padding-top: var(--safe-top);
 }
 
 .header-inner {
     height: 100%;
     max-width: 100%;
-    padding: 0 var(--space-6);
+    padding: 0 1.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-3);
+    gap: 0.75rem;
 }
 
 .header-brand {
@@ -336,7 +320,7 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
 .header-actions {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 0.5rem;
 }
 
 /* Search */
@@ -426,12 +410,28 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
     height: 28px;
 }
 
-/* Mobile menu toggle (hidden on desktop) */
+/* Mobile menu toggle — hidden on desktop */
 .mobile-menu-toggle {
     display: none;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
 }
 
-/* Mobile sidebar overlay (hidden on desktop) */
+.mobile-menu-toggle:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* Sidebar overlay — hidden on desktop */
 .sidebar-overlay {
     display: none;
 }
@@ -448,7 +448,7 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
 
 .breadcrumb-inner {
     height: 100%;
-    padding: 0 var(--space-6);
+    padding: 0 1.5rem;
     display: flex;
     align-items: center;
     gap: 0.4rem;
@@ -483,12 +483,14 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
 }
 
 /* ----------------------------------------------------------------
-   MAIN LAYOUT
+   MAIN LAYOUT — CRITICAL SCROLL FIX
+   On desktop: sidebar + content side by side, content scrolls independently
+   On mobile: stacked vertically, EVERYTHING scrolls with page
    ---------------------------------------------------------------- */
 .main-container {
     display: flex;
+    /* Desktop: fill remaining viewport so content-panel can scroll inside */
     min-height: calc(100vh - var(--header-height) - var(--breadcrumb-height));
-    min-height: calc(100dvh - var(--header-height) - var(--breadcrumb-height));
 }
 
 /* ----------------------------------------------------------------
@@ -504,7 +506,6 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
     flex-direction: column;
     overflow: hidden;
     flex-shrink: 0;
-    transition: transform 0.35s var(--ease-out);
 }
 
 .sidebar-header {
@@ -654,11 +655,10 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
 .content-panel {
     flex-grow: 1;
     overflow-y: auto;
-    padding: var(--space-8) var(--space-10);
+    padding: 2rem 2.5rem;
     min-width: 0;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
 }
 
 /* Content cards */
@@ -666,8 +666,8 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
     background: var(--bg-secondary);
     border: 1px solid var(--border-default);
     border-radius: var(--radius);
-    padding: var(--space-8);
-    margin-bottom: var(--space-5);
+    padding: 2rem;
+    margin-bottom: 1.25rem;
     transition: border-color var(--transition), box-shadow var(--transition);
 }
 
@@ -729,17 +729,7 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
 }
 
 .content-card li strong { color: var(--text-primary); }
-.content-card li code {
-    background: var(--bg-tertiary);
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    color: var(--accent-orange);
-    word-break: break-all;
-}
-
-/* Inline code */
+.content-card li code,
 .content-card p code,
 .info-box p code {
     background: var(--bg-tertiary);
@@ -998,7 +988,6 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.82rem;
-    min-width: 500px;
 }
 
 .comparison-table th {
@@ -1104,10 +1093,6 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
     border-color: var(--border-accent);
 }
 
-.landing-card:active {
-    transform: translateY(-1px);
-}
-
 .landing-card:hover::before { height: 4px; }
 
 .landing-card .card-icon {
@@ -1153,7 +1138,7 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
 .landing-card.systems::before { background: var(--node-systems); }
 
 /* ----------------------------------------------------------------
-   ERROR / TROUBLESHOOTING SECTION
+   ERROR / TROUBLESHOOTING
    ---------------------------------------------------------------- */
 .error-item {
     background: var(--bg-tertiary);
@@ -1219,8 +1204,8 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
    ---------------------------------------------------------------- */
 .scroll-top {
     position: fixed;
-    bottom: var(--space-8);
-    right: var(--space-8);
+    bottom: 2rem;
+    right: 2rem;
     width: 42px;
     height: 42px;
     background: var(--accent-blue);
@@ -1259,8 +1244,7 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
 .footer {
     background: var(--bg-secondary);
     border-top: 1px solid var(--border-default);
-    padding: 1.25rem var(--space-6);
-    padding-bottom: calc(1.25rem + var(--safe-bottom));
+    padding: 1.25rem 1.5rem;
 }
 
 .footer-inner {
@@ -1421,12 +1405,9 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
     min-height: 44px;
 }
 
-.search-result-item:hover {
-    background: var(--bg-hover);
-}
-
+.search-result-item:hover,
 .search-result-item:active {
-    background: var(--bg-active);
+    background: var(--bg-hover);
 }
 
 .search-result-item .result-icon {
@@ -1462,7 +1443,7 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
 }
 
 /* ----------------------------------------------------------------
-   UTILITY CLASSES
+   UTILITY
    ---------------------------------------------------------------- */
 .hidden { display: none !important; }
 .mt-1 { margin-top: 0.5rem; }
@@ -1470,21 +1451,8 @@ button, a, .tree-node-header, .landing-card, .error-header, .pipeline-step {
 .mt-3 { margin-top: 1.5rem; }
 .mb-1 { margin-bottom: 0.5rem; }
 .mb-2 { margin-bottom: 1rem; }
-.visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
 
-/* ----------------------------------------------------------------
-   FOCUS VISIBLE (Accessibility)
-   ---------------------------------------------------------------- */
+/* Accessibility */
 :focus-visible {
     outline: 2px solid var(--accent-blue);
     outline-offset: 2px;
@@ -1495,114 +1463,88 @@ a:focus:not(:focus-visible) {
     outline: none;
 }
 
-/* ----------------------------------------------------------------
-   RESPONSIVE — LARGE TABLETS (max-width: 1024px)
-   ---------------------------------------------------------------- */
+/* ================================================================
+   RESPONSIVE — TABLETS (max-width: 1024px)
+   ================================================================ */
 @media (max-width: 1024px) {
-    .header-inner { padding: 0 var(--space-4); }
-    .breadcrumb-inner { padding: 0 var(--space-4); }
+    .header-inner { padding: 0 1rem; }
+    .breadcrumb-inner { padding: 0 1rem; }
     .search-container { width: 240px; }
     .search-kbd { display: none; }
-    .content-panel { padding: var(--space-6); }
+    .content-panel { padding: 1.5rem; }
     .sidebar { width: 300px; min-width: 240px; }
-    .footer { padding: 1rem var(--space-4); }
+    .footer { padding: 1rem; }
 
     .landing-grid {
         grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     }
 }
 
-/* ----------------------------------------------------------------
-   RESPONSIVE — TABLETS & SMALL LAPTOPS (max-width: 768px)
-   ---------------------------------------------------------------- */
+/* ================================================================
+   RESPONSIVE — PHONES (max-width: 768px)
+   THIS IS WHERE THE MAIN SCROLL FIX HAPPENS
+   ================================================================ */
 @media (max-width: 768px) {
     :root {
         --header-height: 56px;
         --breadcrumb-height: 36px;
     }
 
-    /* Header adjustments */
+    /* ===== CRITICAL SCROLL FIX =====
+       On mobile, we switch from "sidebar + scrolling content panel"
+       to a normal stacked page that scrolls naturally with the body.
+       Remove ALL fixed heights and overflow:auto from containers.
+    */
+
+    .main-container {
+        display: block;              /* NOT flex — just normal block flow */
+        min-height: auto;            /* Kill the min-height constraint */
+        overflow: visible;           /* Let content flow out naturally */
+    }
+
+    .content-panel {
+        overflow: visible;           /* CRITICAL: Do NOT scroll independently */
+        min-height: auto;
+        height: auto;               /* Let it be as tall as content */
+        padding: 1rem;
+    }
+
+    /* ===== END SCROLL FIX ===== */
+
+    /* Header */
     .header-inner {
-        padding: 0 var(--space-3);
-        gap: var(--space-2);
+        padding: 0 0.75rem;
+        gap: 0.5rem;
     }
 
     .brand-icon { font-size: 1.3rem; }
-
     .brand-text h1 { font-size: 0.95rem; }
-
     .brand-subtitle { display: none; }
 
-    .search-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        z-index: 150;
-        padding: 8px 12px;
-        background: var(--bg-secondary);
-        border-bottom: 1px solid var(--border-default);
-        display: none;
-    }
+    /* Search — hide from header, use modal only */
+    .search-container { display: none; }
 
-    .search-container.mobile-open {
-        display: block;
-    }
-
-    .search-container input {
-        font-size: 16px; /* Prevents zoom on iOS */
-    }
-
-    .header-search-toggle {
-        display: flex;
-    }
-
-    /* Mobile menu button */
+    /* Show mobile menu toggle */
     .mobile-menu-toggle {
         display: flex;
-        width: 36px;
-        height: 36px;
-        align-items: center;
-        justify-content: center;
-        background: transparent;
-        border: 1px solid transparent;
-        border-radius: var(--radius-sm);
-        color: var(--text-secondary);
-        cursor: pointer;
-        transition: var(--transition-fast);
-        -webkit-tap-highlight-color: transparent;
-        flex-shrink: 0;
     }
 
-    .mobile-menu-toggle:hover {
-        background: var(--bg-tertiary);
-        color: var(--text-primary);
-    }
-
-    /* Sidebar mobile overlay */
+    /* Sidebar becomes a slide-out drawer */
     .sidebar-overlay {
         display: block;
         position: fixed;
         inset: 0;
         background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
         z-index: 89;
         opacity: 0;
         visibility: hidden;
         transition: opacity 0.3s ease, visibility 0.3s ease;
+        -webkit-tap-highlight-color: transparent;
     }
 
     .sidebar-overlay.active {
         opacity: 1;
         visibility: visible;
-    }
-
-    /* Sidebar transforms to slide-out drawer on mobile */
-    .main-container {
-        flex-direction: column;
-        position: relative;
     }
 
     .sidebar {
@@ -1611,15 +1553,15 @@ a:focus:not(:focus-visible) {
         left: 0;
         bottom: 0;
         width: 85vw !important;
-        max-width: 360px !important;
-        min-width: 280px !important;
+        max-width: 340px !important;
+        min-width: 260px !important;
         z-index: 90;
         transform: translateX(-100%);
         transition: transform 0.35s var(--ease-out);
         border-right: 1px solid var(--border-default);
-        border-bottom: none;
         box-shadow: none;
-        padding-top: var(--safe-top);
+        height: 100vh;
+        height: 100dvh;
     }
 
     .sidebar.mobile-open {
@@ -1627,6 +1569,7 @@ a:focus:not(:focus-visible) {
         box-shadow: var(--shadow-xl);
     }
 
+    /* Sidebar close button */
     .sidebar-close {
         display: flex;
         width: 32px;
@@ -1639,7 +1582,6 @@ a:focus:not(:focus-visible) {
         color: var(--text-secondary);
         cursor: pointer;
         flex-shrink: 0;
-        transition: var(--transition-fast);
     }
 
     .sidebar-close:hover {
@@ -1649,68 +1591,57 @@ a:focus:not(:focus-visible) {
 
     .resize-handle { display: none; }
 
-    /* Tree nodes — larger touch targets */
+    /* Tree nodes — bigger touch targets */
     .tree-node-header {
         padding: 10px 14px;
         padding-left: calc(14px + var(--depth, 0) * 14px);
-        min-height: 44px;
+        min-height: 46px;
         font-size: 0.88rem;
-    }
-
-    /* Content panel */
-    .content-panel {
-        max-width: 100%;
-        padding: var(--space-4);
     }
 
     /* Content card */
     .content-card {
-        padding: var(--space-5);
+        padding: 1.25rem;
         border-radius: var(--radius-sm);
+        margin-bottom: 1rem;
     }
 
-    .content-card h2 {
-        font-size: 1.25rem;
-    }
-
-    .content-card h3 {
-        font-size: 1rem;
-    }
+    .content-card h2 { font-size: 1.2rem; }
+    .content-card h3 { font-size: 1rem; }
 
     /* Breadcrumb */
     .breadcrumb-inner {
-        padding: 0 var(--space-3);
-        font-size: 0.74rem;
+        padding: 0 0.75rem;
+        font-size: 0.72rem;
     }
 
     /* Landing grid */
     .landing-grid {
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 0.75rem;
     }
 
     .landing-card {
-        padding: 1.125rem;
+        padding: 1rem;
     }
 
+    /* Disable hover transforms on touch */
     .landing-card:hover {
-        transform: none; /* Disable hover transform on touch */
+        transform: none;
     }
 
     .landing-card:active {
         transform: scale(0.98);
-        box-shadow: var(--shadow-sm);
     }
 
-    /* Pipeline */
+    /* Pipeline — horizontal scroll on tablet-ish */
     .pipeline {
-        gap: var(--space-1);
-        padding: 0.75rem 0;
+        flex-wrap: nowrap;
         justify-content: flex-start;
         overflow-x: auto;
-        flex-wrap: nowrap;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
+        padding: 0.75rem 0;
     }
 
     .pipeline::-webkit-scrollbar { display: none; }
@@ -1723,150 +1654,110 @@ a:focus:not(:focus-visible) {
 
     .pipeline-step .step-name { font-size: 0.75rem; }
     .pipeline-step .step-tool { font-size: 0.65rem; }
+    .pipeline-step:hover { transform: none; }
     .pipeline-arrow { font-size: 0.85rem; padding: 0 2px; }
 
     /* Code blocks */
     .code-block pre {
-        padding: 0.875rem 1rem;
+        padding: 0.875rem;
         font-size: 0.75rem;
     }
 
     /* Tables */
-    .comparison-table {
-        font-size: 0.78rem;
-    }
-
+    .comparison-table { font-size: 0.78rem; }
     .comparison-table th,
-    .comparison-table td {
-        padding: 8px 10px;
-    }
+    .comparison-table td { padding: 8px 10px; }
 
     /* Info boxes */
-    .info-box {
-        padding: 0.875rem 1rem;
-    }
+    .info-box { padding: 0.875rem 1rem; }
 
     /* Footer */
-    .footer {
-        padding: 1.25rem var(--space-4);
-        padding-bottom: calc(1.25rem + var(--safe-bottom));
-    }
-
+    .footer { padding: 1rem 0.75rem; }
     .footer-inner {
         flex-direction: column;
         text-align: center;
         gap: 0.75rem;
     }
+    .footer-links { justify-content: center; }
 
-    .footer-links {
-        justify-content: center;
-    }
-
-    /* Scroll to top — adjust position */
+    /* Scroll to top */
     .scroll-top {
-        bottom: calc(var(--space-6) + var(--safe-bottom));
-        right: var(--space-4);
+        bottom: 1.5rem;
+        right: 1rem;
         width: 40px;
         height: 40px;
     }
 
     /* Search modal */
-    .modal-overlay {
-        padding-top: 5vh;
-        align-items: flex-start;
-    }
-
+    .modal-overlay { padding-top: 5vh; }
     .search-modal {
         max-width: calc(100vw - 1.5rem);
         max-height: 70vh;
-        border-radius: var(--radius-sm);
     }
-
-    .search-modal-header input {
-        font-size: 16px; /* Prevents zoom on iOS */
-    }
-
-    .search-modal-header kbd {
-        display: none;
-    }
+    .search-modal-header input { font-size: 16px; }
+    .search-modal-header kbd { display: none; }
 
     /* Formula */
-    .formula {
-        font-size: 0.88rem;
-        padding: 0.75rem;
-    }
+    .formula { font-size: 0.88rem; padding: 0.75rem; }
 
     /* Tags */
-    .tags {
-        gap: 0.3rem;
-    }
-
-    .tag {
-        padding: 3px 8px;
-        font-size: 0.68rem;
-    }
+    .tags { gap: 0.3rem; }
+    .tag { padding: 3px 8px; font-size: 0.68rem; }
 }
 
-/* ----------------------------------------------------------------
+/* ================================================================
    RESPONSIVE — SMALL PHONES (max-width: 480px)
-   ---------------------------------------------------------------- */
+   ================================================================ */
 @media (max-width: 480px) {
     :root {
         --header-height: 52px;
         --breadcrumb-height: 34px;
     }
 
-    .header-inner {
-        padding: 0 var(--space-3);
-    }
+    .header-inner { padding: 0 0.625rem; }
 
-    .header-brand {
-        gap: 0.5rem;
-    }
-
-    .brand-icon { font-size: 1.2rem; }
-
-    .brand-text h1 { font-size: 0.85rem; }
+    .header-brand { gap: 0.5rem; }
+    .brand-icon { font-size: 1.15rem; }
+    .brand-text h1 { font-size: 0.82rem; }
 
     /* Sidebar */
     .sidebar {
-        width: 92vw !important;
-        max-width: 340px !important;
+        width: 90vw !important;
+        max-width: 320px !important;
     }
 
     /* Content */
     .content-panel {
-        padding: var(--space-3);
+        padding: 0.75rem;
     }
 
     .content-card {
-        padding: var(--space-4);
-        margin-bottom: var(--space-3);
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border-radius: var(--radius-xs);
     }
 
     .content-card h2 {
-        font-size: 1.15rem;
+        font-size: 1.08rem;
         gap: 0.4rem;
     }
 
     .content-card h3 {
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         margin: 1.25rem 0 0.5rem;
     }
 
-    .content-card h4 {
-        font-size: 0.88rem;
-    }
+    .content-card h4 { font-size: 0.85rem; }
 
     .content-card p,
     .content-card li {
-        font-size: 0.88rem;
+        font-size: 0.86rem;
         line-height: 1.7;
     }
 
     .content-card ul,
     .content-card ol {
-        padding-left: 1.25rem;
+        padding-left: 1.125rem;
     }
 
     /* Landing grid — single column */
@@ -1875,10 +1766,7 @@ a:focus:not(:focus-visible) {
         gap: 0.625rem;
     }
 
-    .landing-card {
-        padding: 1rem;
-    }
-
+    .landing-card { padding: 0.875rem; }
     .landing-card .card-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
     .landing-card .card-title { font-size: 0.92rem; }
     .landing-card .card-desc { font-size: 0.78rem; }
@@ -1889,28 +1777,22 @@ a:focus:not(:focus-visible) {
         margin: 0.625rem 0;
     }
 
-    .code-block-header {
-        padding: 6px 10px;
-    }
-
-    .code-block-lang { font-size: 0.6rem; }
-
-    .code-block-copy {
-        padding: 3px 8px;
-        font-size: 0.65rem;
-    }
+    .code-block-header { padding: 6px 10px; }
+    .code-block-lang { font-size: 0.58rem; }
+    .code-block-copy { padding: 3px 8px; font-size: 0.65rem; }
 
     .code-block pre {
         padding: 0.75rem;
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         line-height: 1.55;
     }
 
-    /* Pipeline — vertical on very small screens */
+    /* Pipeline — go vertical */
     .pipeline {
         flex-direction: column;
         align-items: stretch;
-        gap: 0;
+        flex-wrap: nowrap;
+        overflow-x: visible;
     }
 
     .pipeline-step {
@@ -1921,19 +1803,13 @@ a:focus:not(:focus-visible) {
     .pipeline-arrow {
         transform: rotate(90deg);
         text-align: center;
-        padding: var(--space-1) 0;
+        padding: 4px 0;
     }
 
     /* Tables */
-    .comparison-table {
-        font-size: 0.74rem;
-        min-width: 400px;
-    }
-
+    .comparison-table { font-size: 0.72rem; }
     .comparison-table th,
-    .comparison-table td {
-        padding: 7px 8px;
-    }
+    .comparison-table td { padding: 6px 8px; }
 
     /* Info boxes */
     .info-box {
@@ -1942,247 +1818,121 @@ a:focus:not(:focus-visible) {
         margin: 0.75rem 0;
     }
 
-    .info-box .info-title {
-        font-size: 0.7rem;
-    }
-
-    .info-box p,
-    .info-box li {
-        font-size: 0.84rem;
-    }
+    .info-box .info-title { font-size: 0.68rem; }
+    .info-box p, .info-box li { font-size: 0.82rem; }
 
     /* Error items */
-    .error-header {
-        padding: 10px 12px;
-    }
-
-    .error-header .error-text {
-        font-size: 0.74rem;
-    }
-
-    .error-solution {
-        padding: 10px 12px;
-        font-size: 0.8rem;
-    }
+    .error-header { padding: 10px 10px; }
+    .error-header .error-text { font-size: 0.72rem; }
+    .error-solution { padding: 10px; font-size: 0.8rem; }
 
     /* Footer */
-    .footer {
-        padding: 1rem var(--space-3);
-    }
-
+    .footer { padding: 1rem 0.625rem; }
     .footer-logo { font-size: 1.25rem; }
-    .footer-title { font-size: 0.8rem; }
-    .footer-copy { font-size: 0.65rem; }
-    .footer-links { gap: 0.75rem; }
-    .footer-links a { font-size: 0.78rem; }
-    .footer-stats { font-size: 0.65rem; }
+    .footer-title { font-size: 0.78rem; }
+    .footer-copy { font-size: 0.62rem; }
+    .footer-links { gap: 0.625rem; }
+    .footer-links a { font-size: 0.76rem; }
+    .footer-stats { font-size: 0.62rem; }
 
     /* Scroll to top */
     .scroll-top {
         width: 38px;
         height: 38px;
-        bottom: calc(var(--space-4) + var(--safe-bottom));
-        right: var(--space-3);
+        bottom: 1rem;
+        right: 0.75rem;
     }
 
     /* Search modal */
-    .modal-overlay {
-        padding: var(--space-3);
-        padding-top: 3vh;
-        align-items: flex-start;
-    }
-
-    .search-modal {
-        max-width: 100%;
-        max-height: 80vh;
-    }
-
-    .search-result-item {
-        padding: 8px 10px;
-    }
-
-    .search-result-item .result-title {
-        font-size: 0.84rem;
-    }
-
-    .search-result-item .result-path {
-        font-size: 0.68rem;
-    }
+    .modal-overlay { padding: 0.75rem; padding-top: 3vh; }
+    .search-modal { max-width: 100%; max-height: 80vh; }
 
     /* Breadcrumb */
-    .breadcrumb-inner {
-        padding: 0 var(--space-3);
-        font-size: 0.7rem;
-    }
+    .breadcrumb-inner { padding: 0 0.625rem; font-size: 0.68rem; }
 
     /* Formula */
-    .formula {
-        font-size: 0.82rem;
-        padding: 0.625rem;
-    }
+    .formula { font-size: 0.8rem; padding: 0.625rem; }
 
     /* Interpretation */
-    .interpretation {
-        padding: 1rem;
-    }
+    .interpretation { padding: 0.875rem; }
 }
 
-/* ----------------------------------------------------------------
-   RESPONSIVE — EXTRA SMALL (max-width: 360px)
-   ---------------------------------------------------------------- */
+/* ================================================================
+   RESPONSIVE — TINY PHONES (max-width: 360px)
+   ================================================================ */
 @media (max-width: 360px) {
-    .header-brand {
-        gap: 0.375rem;
-    }
+    .header-brand { gap: 0.375rem; }
+    .brand-text h1 { font-size: 0.75rem; }
+    .brand-icon { font-size: 1rem; }
 
-    .brand-text h1 {
-        font-size: 0.78rem;
-    }
-
-    .brand-icon {
-        font-size: 1.1rem;
-    }
-
-    .content-panel {
-        padding: var(--space-2);
-    }
+    .content-panel { padding: 0.5rem; }
 
     .content-card {
-        padding: 0.875rem;
-        border-radius: var(--radius-xs);
+        padding: 0.75rem;
+        border-radius: 6px;
     }
 
-    .content-card h2 {
-        font-size: 1.05rem;
-    }
+    .content-card h2 { font-size: 1rem; }
+    .content-card h3 { font-size: 0.88rem; }
 
-    .content-card h3 {
-        font-size: 0.9rem;
-    }
+    .landing-card { padding: 0.75rem; }
 
-    .landing-card {
-        padding: 0.875rem;
+    .sidebar {
+        width: 95vw !important;
     }
 }
 
-/* ----------------------------------------------------------------
-   RESPONSIVE — LANDSCAPE PHONE
-   ---------------------------------------------------------------- */
+/* ================================================================
+   LANDSCAPE PHONES
+   ================================================================ */
 @media (max-height: 500px) and (orientation: landscape) {
     :root {
-        --header-height: 48px;
-        --breadcrumb-height: 32px;
+        --header-height: 44px;
+        --breadcrumb-height: 30px;
     }
 
     .sidebar {
         width: 50vw !important;
-        max-width: 320px !important;
+        max-width: 300px !important;
     }
 
-    .content-panel {
-        padding: var(--space-3) var(--space-4);
-    }
-
-    .modal-overlay {
-        padding-top: 2vh;
-    }
-
-    .search-modal {
-        max-height: 85vh;
-    }
+    .content-panel { padding: 0.75rem 1rem; }
 
     .scroll-top {
-        bottom: var(--space-3);
-        right: var(--space-3);
-        width: 36px;
-        height: 36px;
+        bottom: 0.75rem;
+        right: 0.75rem;
+        width: 34px;
+        height: 34px;
     }
 }
 
-/* ----------------------------------------------------------------
-   RESPONSIVE — LARGE SCREENS (min-width: 1440px)
-   ---------------------------------------------------------------- */
+/* ================================================================
+   LARGE SCREENS (min-width: 1440px)
+   ================================================================ */
 @media (min-width: 1440px) {
     .content-panel {
-        padding: var(--space-10) var(--space-12);
-        max-width: 1200px;
+        padding: 2.5rem 3rem;
     }
 
     .landing-grid {
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     }
 
-    .content-card h2 {
-        font-size: 1.6rem;
-    }
+    .content-card h2 { font-size: 1.6rem; }
 }
 
-/* ----------------------------------------------------------------
-   RESPONSIVE — ULTRA-WIDE (min-width: 1920px)
-   ---------------------------------------------------------------- */
+/* ================================================================
+   ULTRA-WIDE (min-width: 1920px)
+   ================================================================ */
 @media (min-width: 1920px) {
     .content-panel {
         max-width: 1400px;
-        margin: 0 auto;
     }
 }
 
-/* ----------------------------------------------------------------
-   PRINT STYLES
-   ---------------------------------------------------------------- */
-@media print {
-    .header,
-    .breadcrumb,
-    .sidebar,
-    .resize-handle,
-    .scroll-top,
-    .footer,
-    .mobile-menu-toggle,
-    .sidebar-overlay,
-    .code-block-copy,
-    .search-container,
-    .header-actions {
-        display: none !important;
-    }
-
-    body {
-        background: white;
-        color: black;
-    }
-
-    .main-container {
-        display: block;
-    }
-
-    .content-panel {
-        padding: 0;
-        overflow: visible;
-    }
-
-    .content-card {
-        break-inside: avoid;
-        border: 1px solid #ccc;
-        box-shadow: none;
-    }
-
-    .info-box {
-        break-inside: avoid;
-    }
-
-    .code-block {
-        break-inside: avoid;
-    }
-
-    a { color: inherit; text-decoration: underline; }
-
-    .landing-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-/* ----------------------------------------------------------------
+/* ================================================================
    REDUCED MOTION
-   ---------------------------------------------------------------- */
+   ================================================================ */
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
         animation-duration: 0.01ms !important;
@@ -2191,26 +1941,15 @@ a:focus:not(:focus-visible) {
         scroll-behavior: auto !important;
     }
 
-    .brand-icon {
-        animation: none;
-    }
-
-    .loader-text {
-        animation: none;
-    }
-
-    .landing-card:hover {
-        transform: none;
-    }
-
-    .pipeline-step:hover {
-        transform: none;
-    }
+    .brand-icon { animation: none; }
+    .loader-text { animation: none; }
+    .landing-card:hover { transform: none; }
+    .pipeline-step:hover { transform: none; }
 }
 
-/* ----------------------------------------------------------------
-   HIGH CONTRAST MODE
-   ---------------------------------------------------------------- */
+/* ================================================================
+   HIGH CONTRAST
+   ================================================================ */
 @media (prefers-contrast: high) {
     :root {
         --border-default: #6e7681;
@@ -2223,41 +1962,51 @@ a:focus:not(:focus-visible) {
         border-width: 2px;
     }
 
-    .info-box {
-        border-left-width: 5px;
-    }
+    .info-box { border-left-width: 5px; }
 }
 
-/* ----------------------------------------------------------------
-   DARK MODE PREFERENCE (auto)
-   ---------------------------------------------------------------- */
-@media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
-        --bg-primary: #ffffff;
-        --bg-secondary: #f6f8fa;
-        --bg-tertiary: #eaeef2;
-        --bg-elevated: #ffffff;
-        --bg-hover: rgba(0, 0, 0, 0.03);
-        --bg-active: rgba(9, 105, 218, 0.08);
-        --bg-glass: rgba(246, 248, 250, 0.85);
-        --text-primary: #1f2328;
-        --text-secondary: #656d76;
-        --text-muted: #8b949e;
-        --text-link: #0969da;
-        --border-default: #d0d7de;
-        --border-muted: #eaeef2;
-        --border-accent: rgba(9, 105, 218, 0.4);
-        --accent-blue: #0969da;
-        --accent-green: #1a7f37;
-        --accent-purple: #8250df;
-        --accent-orange: #bf8700;
-        --accent-red: #cf222e;
-        --accent-pink: #bf3989;
-        --accent-cyan: #0e7c6b;
-        --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-        --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
-        --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
-        --shadow-glow: 0 0 20px rgba(9, 105, 218, 0.1);
+/* ================================================================
+   PRINT
+   ================================================================ */
+@media print {
+    .header,
+    .breadcrumb,
+    .sidebar,
+    .resize-handle,
+    .scroll-top,
+    .mobile-menu-toggle,
+    .sidebar-overlay,
+    .code-block-copy,
+    .search-container,
+    .header-actions,
+    .modal-overlay {
+        display: none !important;
     }
-}
 
+    body {
+        background: white;
+        color: black;
+    }
+
+    .main-container { display: block; }
+
+    .content-panel {
+        padding: 0;
+        overflow: visible;
+    }
+
+    .content-card {
+        break-inside: avoid;
+        border: 1px solid #ccc;
+        box-shadow: none;
+    }
+
+    .info-box { break-inside: avoid; }
+    .code-block { break-inside: avoid; }
+
+    a { color: inherit; text-decoration: underline; }
+
+    .landing-grid { grid-template-columns: repeat(2, 1fr); }
+
+    .footer { padding: 0.5rem 0; }
+}
